@@ -26,8 +26,10 @@ else
     thtnew = thtold + (Vr-Vl)/b*dt;
 end
 
-% Wrap angles 0-2pi
-thtnew = mod(thtnew,2*pi);
+% % % % Wrap angles 0-2pi
+% % % thtnew = mod(thtnew,2*pi);
+% Wrap angles -pi to pi
+thtnew = CoerceAngle(thtnew);
 
 statenew = [xnew; ynew; thtnew];
 

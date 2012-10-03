@@ -3,7 +3,7 @@
 % EJ Kreinar
 
 dt = .1;    %Dt
-T = 400;     % Sim time
+T = 200;     % Sim time
 b = .5;     %Track Width
 
 % INITIAL VALUES
@@ -28,13 +28,13 @@ Vr_sigma = 0;%.05;        % Uncertainty in left wheel
 Vl_sigma = 0;%.05;        % Uncertainty in right wheel
 
 % ENCODER MEASUREMENT
-sigma_enc = .0002; % make this speed-dependent?
+sigma_enc = .0004; % make this speed-dependent?
 
 % GPS MEASUREMENT
 H_gps = [ 1 0 0 ;
     0 1 0 ;
     0 0 1 ];
-sigma_gps = 4;
+sigma_gps = 5;
 sigma_head = .1;
 V_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
 timestep = 5;
@@ -48,11 +48,13 @@ hist_est2   = zeros(len+1,3);
 hist_cov   = zeros(len+1,3,3);
 hist_state(1,:) = x_true;
 hist_est(1,:)   = x_est;
-hist_est2(1,:)   = x_est2;
+% hist_est2(1,:)   = x_est2;
 hist_cov(1,:,:) = P_est;
 
 % GENERATE TRACK
 track = zeros(len,2);
+% track(1:end,1) = 1;
+% track(1:end,2) = .2;
 track(1:40/dt,1) = 1;     % Demo velocity
 track(1:40/dt,2) = 0;    % Demo omega
 track(40/dt:50/dt,1) = 1;     % Demo velocity
