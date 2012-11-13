@@ -3,15 +3,7 @@
 % EJ Kreinar
 
 dt = .1;    %Dt
-<<<<<<< HEAD
 T = 300;     % Sim time
-=======
-<<<<<<< HEAD
-T = 200;     % Sim time
-=======
-T = 300;     % Sim time
->>>>>>> Particle filter improvements...
->>>>>>> new
 b = .5;     %Track Width
 
 % INITIAL VALUES
@@ -36,34 +28,12 @@ Vr_sigma = 0;%.05;        % Uncertainty in left wheel
 Vl_sigma = 0;%.05;        % Uncertainty in right wheel
 
 % ENCODER MEASUREMENT
-<<<<<<< HEAD
-sigma_enc = .01; % make this speed-dependent?
-
 % GPS MEASUREMENT
 H_gps = [ 1 0 0 ;
-=======
-<<<<<<< HEAD
-sigma_enc = .0004; % make this speed-dependent?
-
-% GPS MEASUREMENT
-H_gps = [ 1 0 0 ;
-    0 1 0 ;
-    0 0 1 ];
-sigma_gps = 5;
-=======
-sigma_enc = .01; % make this speed-dependent?
-
-% GPS MEASUREMENT
-H_gps = [ 1 0 0 ;
->>>>>>> new
           0 1 0 %];
           0 0 1 ];
-lever = .6
+lever = .6;
 sigma_gps = .03;
-<<<<<<< HEAD
-=======
->>>>>>> Particle filter improvements...
->>>>>>> new
 sigma_head = .1;
 % V_gps = [ sigma_gps^2 0; 0 sigma_gps^2];
 V_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
@@ -83,23 +53,6 @@ hist_cov(1,:,:) = P_est;
 
 % GENERATE TRACK
 track = zeros(len,2);
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-% track(1:end,1) = 1;
-% track(1:end,2) = .2;
-track(1:40/dt,1) = 1;     % Demo velocity
-track(1:40/dt,2) = 0;    % Demo omega
-track(40/dt:50/dt,1) = 1;     % Demo velocity
-track(40/dt:50/dt,2) = .1;    % Demo omega
-track(50/dt:70/dt,1) = 1;     % Demo velocity
-track(50/dt:70/dt,2) = 0;    % Demo omega
-track(70/dt:80/dt,1) = .5;     % Demo velocity
-track(70/dt:80/dt,2) = -.5;    % Demo omega
-track(80/dt:end,1) = 1;     % Demo velocity
-track(80/dt:end,2) = 0;    % Demo omega
-=======
->>>>>>> new
 track(1:end,1) = 1;
 track(1:end,2) = .02;
 % % track(1:40/dt,1) = 1;     % Demo velocity
@@ -112,10 +65,6 @@ track(1:end,2) = .02;
 % % track(70/dt:80/dt,2) = -.5;    % Demo omega
 % % track(80/dt:end,1) = 1;     % Demo velocity
 % % track(80/dt:end,2) = 0;    % Demo omega
-<<<<<<< HEAD
-=======
->>>>>>> Particle filter improvements...
->>>>>>> new
 
 for i = 1:len
     

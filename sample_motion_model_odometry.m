@@ -5,19 +5,6 @@ function [ x ] = sample_motion_model_odometry( u, x_old )
 
 
 % Robot specific noise parameters
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-% a1 = .00001;
-% a2 = .00001;
-% a3 = .00005;
-% a4 = .00001;
-a1 = .0001;
-a2 = .0001;
-a3 = .0001;
-a4 = .0001;
-=======
->>>>>>> new
 a1 = .00001;
 a2 = .00001;
 a3 = .00005;
@@ -26,10 +13,6 @@ a4 = .00001;
 % a2 = .0001;
 % a3 = .0001;
 % a4 = .0001;
-<<<<<<< HEAD
-=======
->>>>>>> Particle filter improvements...
->>>>>>> new
 
 % Calculate rotation and translation differences from odometry data
 del_rot1 = CoerceAngle(atan2(u(5)-u(2),u(4)-u(1)) - u(3));
