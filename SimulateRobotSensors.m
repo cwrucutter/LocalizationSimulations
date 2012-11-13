@@ -3,7 +3,7 @@
 % EJ Kreinar
 
 dt = .1;    %Dt
-T = 400;     % Sim time
+T = 300;     % Sim time
 b = .5;     %Track Width
 
 % INITIAL VALUES
@@ -14,30 +14,32 @@ x_true = [x0; y0; tht0];
 
 % INITIALIZE ESTIMATES
 phi = eye(3,3);
-x_est = x_true;
-P_est = .001*eye(3,3);
+x_est = x_true+[1;1;1];
+P_est = 9999*eye(3,3);
 % x_est2 = x_true;
 
 % ASSIGN PROCESS NOISE
 sigma_x = .01;        % Uncertainty in x
 sigma_y = .01;        % Uncertainty in y
-sigma_tht = .001;     % Uncertainty in theta
+sigma_tht = .01;     % Uncertainty in theta
 Q = [sigma_x^2 0 0; 0 sigma_y^2 0; 0 0 sigma_tht^2];
 Qk = Q*dt;
 Vr_sigma = 0;%.05;        % Uncertainty in left wheel
 Vl_sigma = 0;%.05;        % Uncertainty in right wheel
 
 % ENCODER MEASUREMENT
-sigma_enc = .0002; % make this speed-dependent?
+sigma_enc = .01; % make this speed-dependent?
 
 % GPS MEASUREMENT
 H_gps = [ 1 0 0 ;
-    0 1 0 ;
-    0 0 1 ];
-sigma_gps = 4;
+          0 1 0 %];
+          0 0 1 ];
+lever = .6
+sigma_gps = .03;
 sigma_head = .1;
+% V_gps = [ sigma_gps^2 0; 0 sigma_gps^2];
 V_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
-timestep = 5;
+timestep = 1;
 Vk_gps = V_gps*timestep;
 
 % Initialize the history
@@ -48,21 +50,23 @@ hist_est2   = zeros(len+1,3);
 hist_cov   = zeros(len+1,3,3);
 hist_state(1,:) = x_true;
 hist_est(1,:)   = x_est;
-hist_est2(1,:)   = x_est2;
+% hist_est2(1,:)   = x_est2;
 hist_cov(1,:,:) = P_est;
 
 % GENERATE TRACK
 track = zeros(len,2);
-track(1:40/dt,1) = 1;     % Demo velocity
-track(1:40/dt,2) = 0;    % Demo omega
-track(40/dt:50/dt,1) = 1;     % Demo velocity
-track(40/dt:50/dt,2) = .1;    % Demo omega
-track(50/dt:70/dt,1) = 1;     % Demo velocity
-track(50/dt:70/dt,2) = 0;    % Demo omega
-track(70/dt:80/dt,1) = .5;     % Demo velocity
-track(70/dt:80/dt,2) = -.5;    % Demo omega
-track(80/dt:end,1) = 1;     % Demo velocity
-track(80/dt:end,2) = 0;    % Demo omega
+track(1:end,1) = 1;
+track(1:end,2) = .02;
+% % track(1:40/dt,1) = 1;     % Demo velocity
+% % track(1:40/dt,2) = 0;    % Demo omega
+% % track(40/dt:50/dt,1) = 1;     % Demo velocity
+% % track(40/dt:50/dt,2) = .1;    % Demo omega
+% % track(50/dt:70/dt,1) = 1;     % Demo velocity
+% % track(50/dt:70/dt,2) = 0;    % Demo omega
+% % track(70/dt:80/dt,1) = .5;     % Demo velocity
+% % track(70/dt:80/dt,2) = -.5;    % Demo omega
+% % track(80/dt:end,1) = 1;     % Demo velocity
+% % track(80/dt:end,2) = 0;    % Demo omega
 
 for i = 1:len
     
@@ -124,6 +128,16 @@ for i = 1:len
         angle = AngleDifference(Zest(3),Z(3));
         innov = [temp(1); temp(2); angle];
         
+%         Zx = x_true(1,1) + lever*cos(x_true(3,1));% + sqrt(Rk(1,1))*randn(1);
+%         Zy = x_true(2,1) + lever*sin(x_true(3,1));% + sqrt(Rk(2,2))*randn(1);
+%         
+%         Zx_est = x_est_pre(1,1) + lever*cos(x_est_pre(3,1));
+%         Zy_est = x_est_pre(2,1) + lever*sin(x_est_pre(3,1));
+%         
+%         innov = [Zx - Zx_est; Zy - Zy_est];
+%         H = [1 0 -lever*sin(Zx_est); 
+%              0 1  lever*cos(Zx_est)] ;
+        
         K = P_pre*H'*inv(H*P_pre*H' + Rk);      % Calculate Kalman gain
         x_est = x_est_pre + K*(innov);  % State Estimate Update
         P_est = (eye(3,3)-K*H)*P_pre;           % Error Covariance Update
@@ -134,7 +148,7 @@ for i = 1:len
         P_est = P_pre;
     end
     
-    x_est(3) = mod(x_est(3),2*pi);
+    x_est(3) = CoerceAngle(x_est(3));
     
     hist_est(i+1,:) = x_est';
 % % %     hist_est2(i+1,:) = x_est2';

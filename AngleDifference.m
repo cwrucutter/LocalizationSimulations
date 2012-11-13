@@ -4,8 +4,10 @@ function [ angle ] = AngleDifference(a,b)
 %   a- angle 1 in radians (0,2pi)
 %   b- angle 2 in radians (0,2pi)
 
-a = mod(a,2*pi); % Coerce between 0 - 2pi
-b = mod(b,2*pi); % Coerce between 0 - 2pi
+% a = mod(a,2*pi); % Coerce between 0 - 2pi
+% b = mod(b,2*pi); % Coerce between 0 - 2pi
+a = CoerceAngle(a); % Coerce between -pi and pi
+b = CoerceAngle(b); % Coerce between -pi and pi
 
 a1 = b-a;                           % Find the angle difference
 a2 = (2*pi-abs(a1)).*sign(a1)*-1;      % Find the complementary angle difference
