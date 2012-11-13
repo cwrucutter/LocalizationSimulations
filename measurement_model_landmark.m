@@ -14,8 +14,18 @@ psi = f(2);
 r_hat   = sqrt((m(1,c)-x(1))^2+(m(2,c)-x(2))^2);
 psi_hat = CoerceAngle(atan2(m(2,c)-x(2),m(1,c)-x(1))-x(3));
 
+<<<<<<< HEAD
 % q = normpdf(r-r_hat,0,sigma_r)*normpdf(AngleDifference(psi,psi_hat),0,sigma_psi);
 q = normpdf(r-r_hat,0,sigma_r);
+=======
+<<<<<<< HEAD
+q = normpdf(r-r_hat,0,sigma_r)*normpdf(AngleDifference(psi,psi_hat),0,sigma_psi);
+% q = normpdf(r-r_hat,0,sigma_r);
+=======
+% q = normpdf(r-r_hat,0,sigma_r)*normpdf(AngleDifference(psi,psi_hat),0,sigma_psi);
+q = normpdf(r-r_hat,0,sigma_r);
+>>>>>>> Particle filter improvements...
+>>>>>>> new
 
 end
 
