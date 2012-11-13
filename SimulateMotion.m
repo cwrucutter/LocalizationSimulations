@@ -7,9 +7,6 @@ function [ statenew ] = SimulateMotion( Vr, Vl, state, b, dt)
 %   state- (xold; yold; thtold) in (m, m, rad). Old state of robot
 %   b- track width, m
 
-% TODO: Add process noise w(t) to the system
-% (currently we assume perfect motion)
-
 xold = state(1,1);
 yold = state(2,1);
 thtold = state(3,1);
