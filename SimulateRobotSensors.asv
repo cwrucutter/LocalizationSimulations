@@ -3,7 +3,7 @@
 % EJ Kreinar
 
 dt = .1;    %Dt
-T = 300;     % Sim time
+T = 200;     % Sim time
 b = .5;     %Track Width
 
 % INITIAL VALUES
@@ -28,16 +28,16 @@ Vr_sigma = 0;%.05;        % Uncertainty in left wheel
 Vl_sigma = 0;%.05;        % Uncertainty in right wheel
 
 % ENCODER MEASUREMENT
-sigma_enc = .01; % make this speed-dependent?
+sigma_enc = .0004; % make this speed-dependent?
 
 % GPS MEASUREMENT
 H_gps = [ 1 0 0 ;
     0 1 0 ;
     0 0 1 ];
-sigma_gps = 2;
-sigma_head = .04;
+sigma_gps = 5;
+sigma_head = .1;
 V_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
-timestep = 1;
+timestep = 5;
 Vk_gps = V_gps*timestep;
 
 % Initialize the history
@@ -53,18 +53,18 @@ hist_cov(1,:,:) = P_est;
 
 % GENERATE TRACK
 track = zeros(len,2);
-track(1:end,1) = 1;
-track(1:end,2) = .02;
-% % track(1:40/dt,1) = 1;     % Demo velocity
-% % track(1:40/dt,2) = 0;    % Demo omega
-% % track(40/dt:50/dt,1) = 1;     % Demo velocity
-% % track(40/dt:50/dt,2) = .1;    % Demo omega
-% % track(50/dt:70/dt,1) = 1;     % Demo velocity
-% % track(50/dt:70/dt,2) = 0;    % Demo omega
-% % track(70/dt:80/dt,1) = .5;     % Demo velocity
-% % track(70/dt:80/dt,2) = -.5;    % Demo omega
-% % track(80/dt:end,1) = 1;     % Demo velocity
-% % track(80/dt:end,2) = 0;    % Demo omega
+% track(1:end,1) = 1;
+% track(1:end,2) = .2;
+track(1:40/dt,1) = 1;     % Demo velocity
+track(1:40/dt,2) = 0;    % Demo omega
+track(40/dt:50/dt,1) = 1;     % Demo velocity
+track(40/dt:50/dt,2) = .1;    % Demo omega
+track(50/dt:70/dt,1) = 1;     % Demo velocity
+track(50/dt:70/dt,2) = 0;    % Demo omega
+track(70/dt:80/dt,1) = .5;     % Demo velocity
+track(70/dt:80/dt,2) = -.5;    % Demo omega
+track(80/dt:end,1) = 1;     % Demo velocity
+track(80/dt:end,2) = 0;    % Demo omega
 
 for i = 1:len
     
@@ -116,7 +116,7 @@ for i = 1:len
 % % %     x_est2 = x_est2 + B*[Dr_true;Dl_true];    % Predict x_est using the true encoder counts
     
     % MEASUREMENT: (only when we get a measurement)
-    if mod(i,timestep/dt) == 0 %GPS Update at 5Hz, for example
+    if 0 %mod(i,timestep/dt) == 0 %GPS Update at 5Hz, for example
         H = [H_gps];    % Create sensitivity matrix
         Rk = [Vk_gps];  % Create noise matrix
         noise = sqrt(Rk)*randn(length(Rk),1);
@@ -130,12 +130,15 @@ for i = 1:len
         x_est = x_est_pre + K*(innov);  % State Estimate Update
         P_est = (eye(3,3)-K*H)*P_pre;           % Error Covariance Update
 %         diff = x_est-x_est_pre;
+ 
+        x_est(3,1) = 
+
     else
         x_est = x_est_pre;
         P_est = P_pre;
     end
     
-    x_est(3) = CoerceAngle(x_est(3));
+    x_est(3) = mod(x_est(3),2*pi);
     
     hist_est(i+1,:) = x_est';
 % % %     hist_est2(i+1,:) = x_est2';
