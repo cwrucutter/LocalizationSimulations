@@ -3,7 +3,7 @@
 % EJ Kreinar
 
 dt = .1;    %Dt
-T = 300;     % Sim time
+T = 500;     % Sim time
 b = .5;     %Track Width
 
 % INITIAL VALUES
@@ -28,15 +28,16 @@ Vr_sigma = 0;%.05;        % Uncertainty in left wheel
 Vl_sigma = 0;%.05;        % Uncertainty in right wheel
 
 % ENCODER MEASUREMENT
-sigma_enc = .01; % make this speed-dependent?
+sigma_enc = .005; % make this speed-dependent?
 
 % GPS MEASUREMENT
 H_gps = [ 1 0 0 ;
-    0 1 0 ;
-    0 0 1 ];
+    0 1 0 ];
+%     0 0 1 ];
 sigma_gps = 2;
 sigma_head = .04;
-V_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
+% V_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
+V_gps = [ sigma_gps^2 0; 0 sigma_gps^2];
 timestep = 1;
 Vk_gps = V_gps*timestep;
 
@@ -123,8 +124,9 @@ for i = 1:len
         Z     = H*x_true + noise;       % Take the measurement, adding simulated noise using randn
         Zest  = H*x_est_pre;
         temp  = Z - Zest;    % Create the innovation (measurement-prediction)
-        angle = AngleDifference(Zest(3),Z(3));
-        innov = [temp(1); temp(2); angle];
+%         angle = AngleDifference(Zest(3),Z(3));
+%         innov = [temp(1); temp(2); angle];
+        innov = [temp(1); temp(2)];
         
         K = P_pre*H'*inv(H*P_pre*H' + Rk);      % Calculate Kalman gain
         x_est = x_est_pre + K*(innov);  % State Estimate Update
@@ -177,7 +179,7 @@ disterr = sqrt(err_x.^2+err_y.^2);
 rms_dist = sqrt(mean(disterr.^2))
 rmserr_x   = sqrt(mean(err_x.^2));
 rmserr_y   = sqrt(mean(err_y.^2));
-rmserr_tht = sqrt(mean(err_tht.^2))*180/pi
+rmserr_tht = sqrt(mean(err_tht.^2))
 
 
 figure

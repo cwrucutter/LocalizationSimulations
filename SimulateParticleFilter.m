@@ -56,14 +56,14 @@ hist_odom(1,:)  = x_odom;
 
 % GENERATE TRACK
 track = zeros(len,2);
-% track(1:end,1) = 1;
-% track(1:end,2) = .02;
+track(1:end,1) = 1;
+track(1:end,2) = .02;
 % track(1:end,1) = .1;
 % track(1:end,2) = .1;
-track(1:end,1) = 1;
-track(1:end,2) = .1;
-track(500:end,1) = .1;
-track(500:end,2) = .1;
+% % % track(1:end,1) = 1;
+% % % track(1:end,2) = .1;
+% % % track(500:end,1) = .1;
+% % % track(500:end,2) = .1;
 % track(1:40/dt,1) = 1;     % Demo velocity
 % track(1:40/dt,2) = 0;    % Demo omega
 % track(40/dt:50/dt,1) = 1;     % Demo velocity
@@ -107,6 +107,7 @@ for i = 1:len
         Rk = [Vk_gps];  % Create noise matrix
         noise = sqrt(Rk)*randn(length(Rk),1);
         Z     = H*x_true + noise;       % Take the measurement, adding simulated noise using randn
+        
         % Create the GPS Measurement (of GPS LEVER ARM)
         alpha = .4;
         GPS(1) = x_true(1) + alpha*cos(x_true(3)) + randn(1)*sigma_gps;

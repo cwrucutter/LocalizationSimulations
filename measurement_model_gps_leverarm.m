@@ -13,7 +13,14 @@ y = zk(2);
 x_hat = xk(1) + alpha*cos(xk(3));
 y_hat = xk(2) + alpha*sin(xk(3));
 
-q = normpdf(x-x_hat,0,gps_std)*normpdf(y-y_hat,0,gps_std);
+pz = 0;
+z1 = x-x_hat;
+z2 = y-y_hat;
+pz = pz + exp(-(z1*z1)/(2*gps_std*gps_std));
+pz = pz + exp(-(z2*z2)/(2*gps_std*gps_std));
+q = pz;
+
+% q = normpdf(x-x_hat,0,gps_std)*normpdf(y-y_hat,0,gps_std);
 
 end
 

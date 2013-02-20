@@ -15,7 +15,7 @@ tht0 = 0;   % Initial theta
 x_true = [x0; y0; tht0];
 
 % LANDMARK LOCATION
-map = [ [20;40] [-20;40] [0;80]];
+map = [ [2;4] [-2;4] [0;8]];
 [dim nland] = size(map);
 sigma_r = 1;
 sigma_psi = .01;
