@@ -14,17 +14,18 @@ x_true = [x0; y0; tht0; 0; 0];
 
 % INITIALIZE ESTIMATES
 phi = eye(5,5);
-x_est = x_true + [1; 1; 1; 0; 0];
+x_est = x_true + [0; 0; 0; 0; 0];
 P_est = 1*eye(5,5);
-P_est(3,3) = 100;
-% x_est2 = x_true;
+for i=1:length(x_est)
+    P_est(i,i) = 10;
+end
 
 % ASSIGN PROCESS NOISE
 sigma_x = .01;        % Uncertainty in x
 sigma_y = .01;        % Uncertainty in y
 sigma_tht = .001;     % Uncertainty in theta
-sigma_v = .1;         % Uncertainty in velocity
-sigma_w = .1;         % Uncertainty in omega
+sigma_v = .5;         % Uncertainty in velocity
+sigma_w = .5;         % Uncertainty in omega
 Q = [sigma_x^2 0 0 0 0; 0 sigma_y^2 0 0 0; 0 0 sigma_tht^2 0 0; 0 0 0 sigma_v^2 0; 0 0 0 0 sigma_w^2 ];
 Qk = Q*dt;
 Vr_sigma = 0;%.05;        % Uncertainty in left wheel
@@ -34,8 +35,11 @@ Vl_sigma = 0;%.05;        % Uncertainty in right wheel
 H_enc = [0 0 0 1  b/2 ;
     0 0 0 1 -b/2 ];
 sigma_enc = .001; % make this speed-dependent?
-V_enc = [0 0 0 sigma_enc^2 0; 0 0 0 0 sigma_enc^2];
-Vk_enc = V_enc*dt;
+sigma_v = 0.1;
+sigma_w = 0.5;
+R_enc = [sigma_v^2 0; 0 sigma_w^2];
+Rk_enc = R_enc*dt;
+meas_enc = 1;
 
 % GPS MEASUREMENT
 H_gps = [ 1 0 0 0 0 ;
@@ -44,9 +48,9 @@ H_gps = [ 1 0 0 0 0 ;
 sigma_gps = .1;
 sigma_head = .04;
 % V_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
-V_gps = [ sigma_gps^2 0; 0 sigma_gps^2];
+R_gps = [ sigma_gps^2 0; 0 sigma_gps^2];
 timestep = 1;
-Vk_gps = V_gps*timestep;
+Rk_gps = R_gps*timestep;
 
 % Initialize the history
 len = T/dt;
@@ -100,44 +104,56 @@ for i = 1:len
     % Estimate equations:
     Dr = Vr_true*dt + sigma_enc*randn; % Measure encoder displacement
     Dl = Vl_true*dt + sigma_enc*randn;
-    del_D   = (Dr+Dl)/2;    % Extract distance and dTheta from encoders
-    del_Tht = (Dr-Dl)/b;
-    tht = x_est(3,1);          % Extract Theta
+%     del_D   = (Dr+Dl)/2;    % Extract distance and dTheta from encoders
+%     del_Tht = (Dr-Dl)/b;
+    tht     = x_est(3,1);          % Extract Theta
+    del_D   = x_est(4,1)*dt;
+    del_Tht = x_est(5,1)*dt;
     x_est_pre      = x_est;
     x_est_pre(1,1) = x_est(1,1) + del_D*cos(tht+del_Tht/2);    % Predict x_est using the true encoder counts
     x_est_pre(2,1) = x_est(2,1) + del_D*sin(tht+del_Tht/2);
     x_est_pre(3,1) = x_est(3,1) + del_Tht;
+    x_est_pre(4,1) = x_est(4,1);
+    x_est_pre(5,1) = x_est(5,1);
     
     tht_mid = tht+del_Tht/2;
-    Ak = [1  0 -x_est(3)*sin(tht_mid) cos(tht_mid) 0 ;
-          0  1 x_est(3)*cos(tht_mid) sin(tht_mid) 0 ;
-          0  0         1                   0       1 ;
-          0  0         0                   0       0 ;
-          0  0         0                   0       0 ];
-    %     Bk = [.5*cos(tht_mid)-del_D/2/b*sin(tht_mid)   .5*cos(tht_mid)+del_D/2/b*sin(tht_mid) ;
-    %           .5*sin(tht_mid)+del_D/2/b*cos(tht_mid)   .5*sin(tht_mid)-del_D/2/b*cos(tht_mid) ;
-    %                         1/b                                 -1/b                           ];
-    %     P_pre     = Ak*P_est*Ak' + sigma_enc^2*Bk*Bk' + Qk;               % Extrapolate error covariance
+    Ak = [1 0 -x_est(4)*dt*sin(tht_mid) dt*cos(tht_mid) -x_est(4)*dt*dt/2*sin(tht_mid);
+          0 1  x_est(4)*dt*cos(tht_mid) dt*sin(tht_mid)  x_est(4)*dt*dt/2*cos(tht_mid);
+          0 0            1                   0                       dt               ;
+          0 0            0                   1                       0                ;
+          0 0            0                   0                       1                ];
+%     Ak = [1  0 -x_est(3)*sin(tht_mid) cos(tht_mid) 0 ;
+%           0  1 x_est(3)*cos(tht_mid) sin(tht_mid) 0 ;
+%           0  0         1                   0       1 ;
+%           0  0         0                   0       0 ;
+%           0  0         0                   0       0 ];
+%         Bk = [.5*cos(tht_mid)-del_D/2/b*sin(tht_mid)   .5*cos(tht_mid)+del_D/2/b*sin(tht_mid) ;
+%               .5*sin(tht_mid)+del_D/2/b*cos(tht_mid)   .5*sin(tht_mid)-del_D/2/b*cos(tht_mid) ;
+%                             1/b                                 -1/b                           ];
+%         P_pre     = Ak*P_est*Ak' + sigma_enc^2*Bk*Bk' + Qk;               % Extrapolate error covariance
     P_pre     = Ak*P_est*Ak' + Qk;               % Extrapolate error covariance
     
     % ENCODER MEASUREMENT: (every time step)
     H = H_enc;
-    Rk = [sigma_enc^2 0; 0 sigma_enc^2 ];
-    noise = sqrt(Rk)*randn(length(Rk),1);
-    %Z     = H*x_true ;%+ noise;       % Take the measurement, adding simulated noise using randn
-    Z  = [Dr; Dl];
+    Rk = Rk_enc;
+    Z  = [Dr/dt; Dl/dt];
     Zest  = H*x_est_pre;
     innov = Z - Zest;    % Create the innovation (measurement-prediction)
     
-    K = P_pre*H'*inv(H*P_pre*H' + Rk);      % Calculate Kalman gain
-    x_est_int = x_est_pre + K*(innov);      % State Estimate Update
-    P_int     = (eye(5,5)-K*H)*P_pre;       % Error Covariance Update
+    if meas_enc == 1
+        K = P_pre*H'*inv(H*P_pre*H' + Rk_enc);      % Calculate Kalman gain
+        x_est_int = x_est_pre + K*(innov);      % State Estimate Update
+        P_int     = (eye(5,5)-K*H)*P_pre;       % Error Covariance Update
+    else
+        x_est_int = x_est_pre;
+    end
     
     % MEASUREMENT: (only when we get a measurement)
     if mod(i,timestep/dt) == 0 %GPS Update at 5Hz, for example
-        H = [H_gps];    % Create sensitivity matrix
-        Rk = [Vk_gps];  % Create noise matrix
+        H = H_gps;    % Create sensitivity matrix
+        Rk = Vk_gps;  % Create noise matrix
         noise = sqrt(Rk)*randn(length(Rk),1);
+        Rk = Rk*10;
         Z     = H*x_true + noise;       % Take the measurement, adding simulated noise using randn
         Zest  = H*x_est_int;
         temp  = Z - Zest;    % Create the innovation (measurement-prediction)
@@ -178,17 +194,18 @@ std_y   = sqrt(hist_cov(:,2,2));
 std_tht = sqrt(hist_cov(:,3,3));
 subplot(3,1,1)
 t = 0:dt:T;
-plot(t,err_x,'b',t,err_x+3*std_x,'r-',t,err_x-3*std_x,'r-');
+trim = 30;
+plot(t(trim:end),err_x(trim:end),'b',t(trim:end),err_x(trim:end)+3*std_x(trim:end),'r-',t(trim:end),err_x(trim:end)-3*std_x(trim:end),'r-');
 grid on
 title('X Error +- 3*Sigma');
 
 subplot(3,1,2)
-plot(t,err_y,'b',t,err_y+3*std_y,'r-',t,err_y-3*std_y,'r-');
+plot(t(trim:end),err_y(trim:end),'b',t(trim:end),err_y(trim:end)+3*std_y(trim:end),'r-',t(trim:end),err_y(trim:end)-3*std_y(trim:end),'r-');
 grid on
 title('Y Error +- 3*Sigma');
 
 subplot(3,1,3)
-plot(t,err_tht,'b',t,err_tht+3*std_tht,'r-',t,err_tht-3*std_tht,'r-');
+plot(t(trim:end),err_tht(trim:end),'b',t(trim:end),err_tht(trim:end)+3*std_tht(trim:end),'r-',t(trim:end),err_tht(trim:end)-3*std_tht(trim:end),'r-');
 grid on
 title('Theta Error +- 3*Sigma');
 
@@ -206,13 +223,22 @@ title('True heading (b) vs Estimated heading (r)');
 figure
 subplot(2,1,1)
 plot(t,hist_state(:,4),'b',t,hist_est(:,4),'r')
+title('True Velocity (b) vs Estimated Velocity (r)');
 subplot(2,1,2)
 plot(t,hist_state(:,5),'b',t,hist_est(:,5),'r')
+title('True Omega (b) vs Estimated Omega (r)');
 
 figure
+err_v = hist_est(:,4)-hist_state(:,4);
+err_w = hist_est(:,5)-hist_state(:,5);
+std_v = sqrt(hist_cov(:,4,4));
+std_w = sqrt(hist_cov(:,5,5));
 subplot(2,1,1)
-plot(hist_state(:,4)-hist_est(:,4))
+trim = 10;
+plot(t(trim:end),err_v(trim:end),'b',t(trim:end),err_v(trim:end)+3*std_v(trim:end),'r-',t(trim:end),err_v(trim:end)-3*std_v(trim:end),'r-');
+title('Velocity Error +- 3*sigma');
 subplot(2,1,2)
-plot(hist_state(:,5)-hist_est(:,5))
+plot(t(trim:end),err_w(trim:end),'b',t(trim:end),err_w(trim:end)+3*std_w(trim:end),'r-',t(trim:end),err_w(trim:end)-3*std_w(trim:end),'r-');
+title('Velocity Error +- 3*sigma');
 
 

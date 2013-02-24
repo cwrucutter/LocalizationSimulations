@@ -27,9 +27,9 @@ Vr_sigma = 0; % True Actuator Noise on the encoder left
 Vl_sigma = 0; % True Actuator Noise on the encoder right
 
 % ENCODER MEASUREMENT
-sigma_enc = .005; % make this speed-dependent?
-sigma_gyro1 = 0.05;
-sigma_vel1 = 0.05;
+sigma_enc = .01; % make this speed-dependent?
+sigma_gyro1 = 0.1;
+sigma_vel1 = 0.1;
 sigma_gyro2 = 0.05;
 sigma_vel2 = 0.05;
 
@@ -53,12 +53,15 @@ sigma_psi = sigma_psi*timestep;
 
 % Initialize the Velocity Kalman Pre-Filter
 Xtot = [0;0;0;0]; Ptot = zeros(4,4);
-CKF = VelocityKF(dt);
+% CKF = VelocityKF(dt);
+CKF = VelocityErrorKF(dt);
+CKF.setTrackWidth(b);
 kf_sigma_v = 0.001; kf_sigma_w = 0.001; kf_sigma_vdot = .05; kf_sigma_wdot = .05;
-kf_sigma_v_enc = .2; kf_sigma_w_enc = 1;
-kf_sigma_w_gyro1 = .4; kf_sigma_v_obs1 = .4;
+kf_sigma_vRoff = 0.1; kf_sigma_vLoff = 0.1;
+kf_sigma_v_enc = .5; kf_sigma_w_enc = 1.5;
+kf_sigma_w_gyro1 = .8; kf_sigma_v_obs1 = .8;
 kf_sigma_w_gyro2 = .4; kf_sigma_v_obs2 = .4;
-CKF.setProcessNoise(kf_sigma_v, kf_sigma_w, kf_sigma_vdot, kf_sigma_wdot);
+CKF.setProcessNoise(kf_sigma_v, kf_sigma_w, kf_sigma_vdot, kf_sigma_wdot, kf_sigma_vRoff, kf_sigma_vLoff);
 CKF.setMeasurementNoiseEncoder(kf_sigma_v_enc, kf_sigma_w_enc);
 CKF.setMeasurementNoiseGyro(kf_sigma_w_gyro1);
 CKF.setMeasurementNoiseVel(kf_sigma_v_obs1);
@@ -81,20 +84,10 @@ CKF.setMeasurementNoiseVel(kf_sigma_v_obs1);
 
 % Initialize the history
 len = T/dt;
-hist_ckf = zeros(len+1,4);
-hist_ckf_p = zeros(len+1,4,4);
-hist_fkf1 = zeros(len+1,4);
-hist_fkf1_p = zeros(len+1,4,4);
-hist_fkf2 = zeros(len+1,4);
-hist_fkf2_p = zeros(len+1,4,4);
-hist_fkf3 = zeros(len+1,4);
-hist_fkf3_p = zeros(len+1,4,4);
-hist_tot = zeros(len+1,4);
-hist_tot_p = zeros(len+1,4,4);
-hist_quality = zeros(len+1,4);
-hist_Rest = zeros(len+1,2);
-hist_fusion = zeros(len+1,1);
+hist_ckf = zeros(len+1,6);
+hist_ckf_p = zeros(len+1,6,6);
 hist_state = zeros(len+1,3);
+hist_wheelvel = zeros(len+1,4);
 hist_vel = zeros(len+1,8);
 hist_odom = zeros(len+1,3);
 hist_part  = zeros(len+1,3,n_part);
@@ -166,83 +159,18 @@ for i = 1:len
     v_obs2 = (Vr+Vl)/2 + sigma_vel2*randn;
     CKF.update();
     CKF.measureEncoder(v_enc,w_enc);
-    Rest = [0;0];
-    if i > 10
-        Cnum = Cnum + 1;
-        Cavg = (Cnum - 1)/Cnum * Cavg + 1/Cnum*(CKF.y*CKF.y');
-        Rest = diag(Cavg - CKF.S);
-        if Rest(1) <= 0
-            Rest(1) = 0.01;
-        end
-        if Rest(2) <= 0
-            Rest(2) = 0.01;
-        end
-        CKF.setMeasurementNoiseEncoder(sqrt(sqrt((Rest(1)))),sqrt(sqrt(Rest(2))));
-    end
-    hist_Rest(i+1,:) = [sqrt(sqrt(Rest(1))); sqrt(sqrt(Rest(2)))];
     CKF.setMeasurementNoiseGyro(kf_sigma_w_gyro1);
     CKF.setMeasurementNoiseVel(kf_sigma_v_obs1);
-    CKF.measureVel(v_obs1);
+%     CKF.measureVel(v_obs1);
     CKF.measureGyro(w_gyro1);
 %     CKF.setMeasurementNoiseGyro(kf_sigma_w_gyro2);
 %     CKF.setMeasurementNoiseVel(kf_sigma_v_obs2);
 %     CKF.measureVelGyro(v_obs2,w_gyro2);
     
-% %     FKF1.update();
-% %     FKF2.update();
-% %     FKF3.update();
-% %     d1 = 0; d2 = 0; d3 = 0;
-% %     FKF1.measureEncoder(v_enc,w_enc);
-% % %     d1 = d1 + FKF1.y'/FKF1.S*FKF1.y;
-% %     S1 = [1 0 0 0; 0 1 0 0]*FKF1.p*[1 0 0 0; 0 1 0 0]' + FKF1.Rk_enc;
-% %     d1 = d1 + ([FKF1.x(1);FKF1.x(2)] - [Xtot(1);Xtot(2)])'*inv(S1)*([FKF1.x(1);FKF1.x(2)] - [Xtot(1);Xtot(2)]);
-% % %     FKF2.measureGyro(w_gyro1);
-% % %     FKF2.measureVel(v_obs1);
-% %     FKF2.measureVelGyro(v_obs1,w_gyro1);
-% % %     d2 = d2 + FKF2.y'/FKF2.S*FKF2.y;
-% %     S2 = [1 0 0 0; 0 1 0 0]*FKF2.p*[1 0 0 0; 0 1 0 0]' + [FKF2.Rk_vel 0; 0 FKF2.Rk_gyro];
-% %     d2 = d2 + ([FKF2.x(1);FKF2.x(2)] - [Xtot(1);Xtot(2)])'*inv(S2)*([FKF2.x(1);FKF2.x(2)] - [Xtot(1);Xtot(2)]);
-% % %     FKF3.measureGyro(w_gyro2);
-% % %     FKF3.measureVel(v_obs2);
-% %     FKF3.measureVelGyro(v_obs2,w_gyro2);
-% % %     d3 = d3 + FKF3.y'/FKF3.S*FKF3.y;
-% %     S3 = [1 0 0 0; 0 1 0 0]*FKF3.p*[1 0 0 0; 0 1 0 0]' + [FKF3.Rk_vel 0; 0 FKF3.Rk_gyro];
-% %     d3 = d3 + ([FKF3.x(1);FKF3.x(2)] - [Xtot(1);Xtot(2)])'*inv(S3)*([FKF3.x(1);FKF3.x(2)] - [Xtot(1);Xtot(2)]);
-% % %     d1 = d1 + ([FKF1.x(1);FKF1.x(2)] - [FKF2.x(1);FKF2.x(2)])'*inv(S1+S2)*([FKF1.x(1);FKF1.x(2)] - [FKF2.x(1);FKF2.x(2)]);
-% % %     d2 = d2 + ([FKF1.x(1);FKF1.x(2)] - [FKF3.x(1);FKF3.x(2)])'*inv(S1+S3)*([FKF1.x(1);FKF1.x(2)] - [FKF3.x(1);FKF3.x(2)]);
-% %     U1 = Ualpha*d1 + (1-Ualpha)*U1;
-% %     U2 = Ualpha*d2 + (1-Ualpha)*U2;
-% %     U3 = Ualpha*d3 + (1-Ualpha)*U3;
-% %     Umin = min(U1,U2);%min(U2,U3));
-% %     Q1 = U1/Umin;
-% %     Q2 = U2/Umin;
-% %     Q3 = U3/Umin;
-% %     hist_quality(i+1,:)=[Q1;Q2;Q3;0];%U1;U2];%
-% %     
-% %     if Q1 > 10;%Q1 > 10 && Q2 < 10 %&& Q3 < 10 && 
-% %         hist_fusion(i+1,1) = 1;
-% % %         Ptot = inv(inv(FKF2.p)+inv(FKF3.p));
-% % %         Xtot = Ptot*(FKF2.p\FKF2.x + FKF3.p\FKF3.x);
-% %         Ptot = inv(inv(FKF2.p));
-% %         Xtot = Ptot*(FKF2.p\FKF2.x);
-% %     else
-% %         hist_fusion(i+1,1) = 0;
-% % %         Ptot = inv(inv(FKF1.p)+inv(FKF2.p)+inv(FKF3.p));
-% % %         Xtot = Ptot*(FKF1.p\FKF1.x + FKF2.p\FKF2.x + FKF3.p\FKF3.x);
-% %         Ptot = inv(inv(FKF1.p)+inv(FKF2.p));
-% %         Xtot = Ptot*(FKF1.p\FKF1.x + FKF2.p\FKF2.x);
-% %     end
     hist_vel(i+1,:) = [v_true;w_true;v_enc;w_enc;v_obs1;w_gyro1;v_obs1;w_gyro1];
+    hist_wheelvel(i+1,:) = [Vr_true;Vl_true;Dr/dt;Dl/dt];
     hist_ckf(i+1,:) = CKF.x';
     hist_ckf_p(i+1,:,:) = CKF.p;
-%     hist_fkf1(i+1,:) = FKF1.x';
-%     hist_fkf1_p(i+1,:,:) = FKF1.p;
-%     hist_fkf2(i+1,:) = FKF2.x';
-%     hist_fkf2_p(i+1,:,:) = FKF2.p;
-%     hist_fkf3(i+1,:) = FKF3.x';
-%     hist_fkf3_p(i+1,:,:) = FKF3.p;
-%     hist_tot(i+1,:) = Xtot;
-%     hist_tot_p(i+1,:,:) = Ptot;
     
     % Integrate velocity to find odometry data
     kf_v = CKF.x(1);
@@ -311,20 +239,8 @@ v_true = hist_vel(:,1);
 w_true = hist_vel(:,2);
 v_ckf  = hist_ckf(:,1);
 w_ckf  = hist_ckf(:,2);
-v_fkf1 = hist_fkf1(:,1);
-w_fkf1 = hist_fkf1(:,2);
-v_fkf2 = hist_fkf2(:,1);
-w_fkf2 = hist_fkf2(:,2);
-v_fkf3 = hist_fkf3(:,1);
-w_fkf3 = hist_fkf3(:,2);
-v_tot = hist_tot(:,1);
-w_tot = hist_tot(:,2);
 v_rms_ckf = sqrt((v_true-v_ckf)'*(v_true-v_ckf)/length(v_true))
 w_rms_ckf = sqrt((w_true-w_ckf)'*(w_true-w_ckf)/length(w_true))
-% v_rms_fkf1 = sqrt((v_true-v_fkf1)'*(v_true-v_fkf1)/length(v_true))
-% v_rms_fkf2 = sqrt((v_true-v_fkf2)'*(v_true-v_fkf2)/length(v_true))
-% v_rms_fkf3 = sqrt((v_true-v_fkf3)'*(v_true-v_fkf3)/length(v_true))
-% v_rms_tot = sqrt((v_true-v_tot)'*(v_true-v_tot)/length(v_true))
 
 %% Plots
 close all
@@ -344,27 +260,48 @@ v_err = 3*sqrt(hist_ckf_p(:,1,1));
 plot(t,hist_ckf(:,1),'r')%,t,hist_vel(:,6),'g',t,hist_vel(:,3),'b');
 hold on
 plot(t,hist_ckf(:,1)+v_err,'b-',t,hist_ckf(:,1)-v_err,'b-')
-plot(t,hist_vel(:,1),'m');
+% plot(t,hist_vel(:,1),'m');
 plot(t,hist_vel(:,3),'g');
-title('CKF Velocity');
+title('CKF Velocity (r) and Encoder Velocity (g)');
 
 subplot(2,1,2)
-w_err = 3*sqrt(hist_ckf_p(:,1,1));
+w_err = 3*sqrt(hist_ckf_p(:,2,2));
 plot(t,hist_ckf(:,2),'r')%,t,hist_vel(:,4),'b',t,hist_vel(:,5),'g');
 hold on
 plot(t,hist_ckf(:,2)+w_err,'b-',t,hist_ckf(:,2)-w_err,'b-')
-plot(t,hist_vel(:,2),'m');
+% plot(t,hist_vel(:,2),'m');
 plot(t,hist_vel(:,4),'g');
-title('CKF Omega')
+title('CKF Omega and Encoder Omega (g)')
 
-% Adaptive R estimates
+
+% Display CKF's Encoder Error States
 figure
 subplot(2,1,1)
-plot(t,hist_Rest(:,1))
-title('Experimental Measurement noise: Encoder Velocity')
+t = 0:dt:T;
+voff_err = 3*sqrt(hist_ckf_p(:,5,5));
+plot(t,hist_ckf(:,5),'r')%,t,hist_vel(:,6),'g',t,hist_vel(:,3),'b');
+hold on
+plot(t,hist_ckf(:,5)+voff_err,'b-',t,hist_ckf(:,5)-voff_err,'b-')
+plot(t,hist_wheelvel(:,3)-hist_wheelvel(:,1),'g');
+title('Estimated Right-Wheel Velocity Error (r) and Actual Error (g)');
+
 subplot(2,1,2)
-plot(t,hist_Rest(:,2))
-title('Experimental Measurement noise: Encoder Omega')
+woff_err = 3*sqrt(hist_ckf_p(:,6,6));
+plot(t,hist_ckf(:,6),'r')%,t,hist_vel(:,4),'b',t,hist_vel(:,5),'g');
+hold on
+plot(t,hist_ckf(:,6)+woff_err,'b-',t,hist_ckf(:,6)-woff_err,'b-')
+plot(t,hist_wheelvel(:,4)-hist_wheelvel(:,2),'g');
+title('Estimated Left-Wheel Velocity Error (r) and Actual Error (g)')
+
+
+% % Adaptive R estimates
+% figure
+% subplot(2,1,1)
+% plot(t,hist_Rest(:,1))
+% title('Experimental Measurement noise: Encoder Velocity')
+% subplot(2,1,2)
+% plot(t,hist_Rest(:,2))
+% title('Experimental Measurement noise: Encoder Omega')
 
 % % % Display FKF 1
 % % figure
