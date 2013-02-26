@@ -1,6 +1,7 @@
 
 %% Simple Robot Differential Drive Simulation v1.0
 % EJ Kreinar
+clear all
 
 dt = .1;    %Dt
 T = 200;     % Sim time
@@ -44,12 +45,14 @@ meas_enc = 1;
 % GPS MEASUREMENT
 H_gps = [ 1 0 0 0 0 ;
           0 1 0 0 0 ];
+%           0 0 1 0 0 ];
 %     0 0 1 ];
-sigma_gps = .1;
+alpha = 0; % Lever arm offset
+sigma_gps = .02;
 sigma_head = .04;
-% V_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
 R_gps = [ sigma_gps^2 0; 0 sigma_gps^2];
-timestep = 1;
+% R_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
+timestep = .2;
 Rk_gps = R_gps*timestep;
 
 % Initialize the history
@@ -146,21 +149,25 @@ for i = 1:len
         P_int     = (eye(5,5)-K*H)*P_pre;       % Error Covariance Update
     else
         x_est_int = x_est_pre;
+        P_int = P_pre;
     end
     
     % MEASUREMENT: (only when we get a measurement)
     if mod(i,timestep/dt) == 0 %GPS Update at 5Hz, for example
-        H = H_gps;    % Create sensitivity matrix
-        Rk = Vk_gps;  % Create noise matrix
+        H_gps = [ 1 0 -alpha*sin(x_est_int(3)) 0 0 ; % Nonlinear measurement sensitivity
+                  0 1  alpha*cos(x_est_int(3)) 0 0 ];
+        Rk = Rk_gps;  % Create noise matrix
         noise = sqrt(Rk)*randn(length(Rk),1);
-        Rk = Rk*10;
-        Z     = H*x_true + noise;       % Take the measurement, adding simulated noise using randn
-        Zest  = H*x_est_int;
+        Ztrue = [x_true(1) + alpha*cos(x_true(3)); x_true(2) + alpha*sin(x_true(3))];
+        Z     = Ztrue + noise;       % Take the measurement, adding simulated noise using randn
+        Zest  = [x_est_int(1) + alpha*cos(x_est_int(3)); x_est_int(2) + alpha*sin(x_est_int(3))];
         temp  = Z - Zest;    % Create the innovation (measurement-prediction)
-        %         angle = AngleDifference(Zest(3),Z(3));
-        %         innov = [temp(1); temp(2); angle];
+%         angle = AngleDifference(Zest(3),Z(3));
+%         innov = [temp(1); temp(2); angle];
         innov = [temp(1); temp(2)];
         
+        H = H_gps;    % Make sure H is the gps sensitivity matrix
+        Rk = Rk_gps*10;
         K = P_int*H'*inv(H*P_int*H' + Rk);      % Calculate Kalman gain
         x_est = x_est_int + K*(innov);  % State Estimate Update
         P_est = (eye(5,5)-K*H)*P_int;           % Error Covariance Update
