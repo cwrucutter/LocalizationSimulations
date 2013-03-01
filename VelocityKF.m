@@ -98,6 +98,7 @@ classdef VelocityKF < handle
         
         function KF = measureEncoder(KF, v, w)
             % Encoders measure v and w
+            % TODO: Change the measurement to Vr and Vl!!
             H = [1 0 0 0
                  0 1 0 0];
             z = [v;w];
