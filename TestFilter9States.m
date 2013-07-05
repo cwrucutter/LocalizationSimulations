@@ -1,12 +1,7 @@
-
-%% Simple Robot Differential Drive Simulation v1.0
-% EJ Kreinar
-clear all
-
-% rng(1)
+function [ filter_diverged, rms_dist, rmserr_tht, rmserr_v, rmserr_w, rmserr_vRoff, rmserr_vLoff, hist_est, err_norm, hist_state ]  = TestFilter9States( SimulateEncoderFault, procNoise, measNoise )
 
 dt = .1;    %Dt
-T = 150;     % Sim time
+T = 100;     % Sim time
 b = .5;     %Track Width
 
 % INITIAL VALUES
@@ -17,7 +12,7 @@ tht0 = 2;   % Initial theta
 x_true_9 = [x0; y0; tht0; 0; 0; 0; 0; 0; 0];
 x_true_7 = [x0; y0; tht0; 0; 0; 0; 0];
 x_true_5 = [x0; y0; tht0; 0; 0];
-x_true = x_true_7;
+x_true = x_true_9;
 
 % INITIALIZE ESTIMATES
 phi = eye(length(x_true),length(x_true));
@@ -41,19 +36,7 @@ f_sys_9 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
                 x(7);
                 x(8);
                 x(9)];
-f_sys_7 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
-                x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
-                x(3)+x(5)*dt;
-                x(4);
-                x(5);
-                x(6);
-                x(7)];
-f_sys_5 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
-                x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
-                x(3)+x(5)*dt;
-                x(4);
-                x(5);];
-f_sys = f_sys_7;   
+f_sys = f_sys_9;   
 % % System 1: 7 States: [x;y;tht;v;w;verr1;verr2]
 Asys_9 = @(x,dt) [1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2) 0  0 0 0;
            0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2) 0  0 0 0;
@@ -72,12 +55,12 @@ Asys_7 = @(x,dt) [1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*
            0 0            0                         0                       0                        1  0;
            0 0            0                         0                       0                        0  1];
 % % System 2: 5 States: [x;y;tht;v;w]
-Asys_5 = @(x,dt) [ 1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2);
-                   0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2);
-                   0 0            1                         0                       dt                      ;
-                   0 0            0                         1                       0                       ;
-                   0 0            0                         0                       1                       ];
-Asys = Asys_7;
+Asys_5 = @(x,dt) [1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2);
+           0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2);
+           0 0            1                         0                       dt                      ;
+           0 0            0                         1                       0                       ;
+           0 0            0                         0                       1                       ];
+Asys = Asys_9;
 
 % ASSIGN PROCESS NOISE
 sigma_x = .01;        % Uncertainty in x
@@ -89,14 +72,17 @@ sigma_vRerr = 0.05;
 sigma_vLerr = 0.05;
 sigma_vdot = .5;
 sigma_wdot = .5;
-Q_9 = [sigma_x^2 0 0 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0 0 0;
-       0 0 0 sigma_v^2 0 0 0 0 0; 0 0 0 0 sigma_w^2 0 0 0 0; 0 0 0 0 0 sigma_vRerr^2 0 0 0; 0 0 0 0 0 0 sigma_vLerr^2 0 0;
-       0 0 0 0 0 0 0 sigma_vdot^2 0; 0 0 0 0 0 0 0 0 sigma_wdot^2; ];
-Q_7 = [sigma_x^2 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0;
-     0 0 0 sigma_v^2 0 0 0; 0 0 0 0 sigma_w^2 0 0; 0 0 0 0 0 sigma_vRerr^2 0; 0 0 0 0 0 0 sigma_vLerr^2];
-Q_5 = [sigma_x^2 0 0 0 0; 0 sigma_y^2 0 0 0; 0 0 sigma_tht^2 0 0;
-     0 0 0 sigma_v^2 0; 0 0 0 0 sigma_w^2];
-Q = Q_7;
+% Q_9 = [sigma_x^2 0 0 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0 0 0;
+%        0 0 0 sigma_v^2 0 0 0 0 0; 0 0 0 0 sigma_w^2 0 0 0 0; 0 0 0 0 0 sigma_vRerr^2 0 0 0; 0 0 0 0 0 0 sigma_vLerr^2 0 0;
+%        0 0 0 0 0 0 0 sigma_vdot^2 0; 0 0 0 0 0 0 0 0 sigma_wdot^2; ];
+% Q_7 = [sigma_x^2 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0;
+%      0 0 0 sigma_v^2 0 0 0; 0 0 0 0 sigma_w^2 0 0; 0 0 0 0 0 sigma_vRerr^2 0; 0 0 0 0 0 0 sigma_vLerr^2];
+% Q_5 = [sigma_x^2 0 0 0 0; 0 sigma_y^2 0 0 0; 0 0 sigma_tht^2 0 0;
+%      0 0 0 sigma_v^2 0; 0 0 0 0 sigma_w^2];
+Q_9 = [procNoise(1)^2 0 0 0 0 0 0 0 0; 0 procNoise(2)^2 0 0 0 0 0 0 0; 0 0 procNoise(3)^2 0 0 0 0 0 0;
+     0 0 0 procNoise(4)^2 0 0 0 0 0; 0 0 0 0 procNoise(5)^2 0 0 0 0; 0 0 0 0 0 procNoise(6)^2 0 0 0; 0 0 0 0 0 0 procNoise(7)^2 0 0;
+     0 0 0 0 0 0 0 procNoise(8)^2 0; 0 0 0 0 0 0 0 0 procNoise(9)^2; ];
+Q = Q_9;
 Qk = Q*dt;
 Vr_sigma = 0;%.05;        % Uncertainty in left wheel
 Vl_sigma = 0;%.05;        % Uncertainty in right wheel
@@ -104,25 +90,21 @@ Vl_sigma = 0;%.05;        % Uncertainty in right wheel
 % ENCODER MEASUREMENT
 H_enc_9 = [0 0 0 1  b/2 1 0 0 0;
          0 0 0 1 -b/2 0 1 0 0];
-% H_enc_7 = [0 0 0 1  b/2 1 0 ;
-%            0 0 0 1 -b/2 0 1;
-%            0 0 0 0   1  0 0];
 H_enc_7 = [0 0 0 1  b/2 1 0 ;
-           0 0 0 1 -b/2 0 1];
+         0 0 0 1 -b/2 0 1];
 H_enc_5 = [0 0 0 1  b/2;
          0 0 0 1 -b/2];
-H_enc = H_enc_7;
+H_enc = H_enc_9;
 sigma_enc = .001; % make this speed-dependent?
-sigma_gyro = 0.05;
-sigma_v = 0.1;
-sigma_w = 0.1;
-R_enc = [sigma_v^2 0; 0 sigma_w^2];
-% R_enc = [sigma_v^2 0 0; 0 sigma_w^2 0;0 0 sigma_gyro^2];
+sigma_vr = 0.1;
+sigma_vl = 0.1;
+% R_enc = [sigma_vr^2 0; 0 sigma_vl^2];
+R_enc = [measNoise(1)^2 0; 0 measNoise(2)^2];
 Rk_enc = R_enc*dt;
 meas_enc = 1;
 
 % GPS MEASUREMENT
-xarm = 0; % Lever arm offset
+xarm = 0.5; % Lever arm offset
 yarm = 0;
 % H_gps = [ 1 0 0 0 0 0 0;
 %           0 1 0 0 0 0 0];
@@ -134,13 +116,14 @@ H_gps_7 = @(x) [ 1 0 -xarm*sin(x(3))-yarm*cos(x(3)) 0 0 0 0;
                0 1  xarm*cos(x(3))-yarm*sin(x(3)) 0 0 0 0];
 H_gps_5 = @(x) [ 1 0 -xarm*sin(x(3))-yarm*cos(x(3)) 0 0; 
                0 1  xarm*cos(x(3))-yarm*sin(x(3)) 0 0];
-H_gps = H_gps_7;
+H_gps = H_gps_9;
 h_gps = @(x) [x(1) + xarm*cos(x(3)) - yarm*sin(x(3));
               x(2) + xarm*sin(x(3)) + yarm*cos(x(3))];
 iekf_max = 1;
 sigma_gps = .05;
 sigma_head = .04;
-R_gps = [ sigma_gps^2 0; 0 sigma_gps^2];
+% R_gps = [ sigma_gps^2 0; 0 sigma_gps^2];
+R_gps = [ measNoise(3)^2 0; 0 measNoise(3)^2];
 % R_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
 timestep = .2;
 Rk_gps = R_gps*timestep;
@@ -152,7 +135,6 @@ hist_est   = zeros(len+1,length(x_true));
 hist_est2   = zeros(len+1,length(x_true));
 hist_cov   = zeros(len+1,length(x_true),length(x_true));
 hist_iter = zeros(len+1,1);
-hist_movavg = zeros(len+1,3);
 hist_state(1,:) = x_true;
 hist_est(1,:)   = x_est;
 % hist_est2(1,:)   = x_est2;
@@ -179,7 +161,21 @@ wdot = 1;
 V = 0;
 w = 0;
 
-movAvg = zeros(3,10);
+% % Old track
+% track(1:40/dt,1) = 1;     % Demo velocity
+% track(1:40/dt,2) = 0;    % Demo omega
+% track(40/dt:50/dt,1) = 1;     % Demo velocity
+% track(40/dt:50/dt,2) = .1;    % Demo omega
+% track(50/dt:70/dt,1) = 1;     % Demo velocity
+% track(50/dt:70/dt,2) = 0;    % Demo omega
+% track(70/dt:80/dt,1) = .5;     % Demo velocity
+% track(70/dt:80/dt,2) = -.5;    % Demo omega
+% track(80/dt:90/dt,1) = 1;     % Demo velocity
+% track(80/dt:90/dt,2) = 0;    % Demo omega
+% track(90/dt:92/dt,1) = 0;     % Demo velocity
+% track(90/dt:92/dt,2) = .1;    % Demo omega
+% track(92/dt:end,1) = 0.2;     % Demo velocity
+% track(92/dt:end,2) = 0;    % Demo omega
 
 for i = 1:len
     
@@ -199,9 +195,8 @@ for i = 1:len
     
     % SIMULATE TRUE ROBOT MOTION
     x_true = SimulateMotion(Vr_true,Vl_true,x_true,b,dt);
-    [vRoff, vLoff] = SimulateEncoderVelocityFault2(i,dt);
-    x_true = [x_true; V; w; vRoff; vLoff];
-%     x_true = [x_true; V; w; vRoff; vLoff; vaccel; waccel];
+    [vRoff, vLoff] = SimulateEncoderFault(i,dt);
+    x_true = [x_true; V; w; vRoff; vLoff; vaccel; waccel];
 %     x_true = [x_true; V; w;];
     hist_state(i+1,:) = x_true';
     
@@ -212,19 +207,21 @@ for i = 1:len
     x_est_pre = f_sys(x_est);
     
     Ak = Asys(x_est,dt);
+%     Ak = [1 0 -x_est(4)*dt*sin(tht_mid) dt*cos(tht_mid) -x_est(4)*dt*dt/2*sin(tht_mid) 0  0;
+%           0 1  x_est(4)*dt*cos(tht_mid) dt*sin(tht_mid)  x_est(4)*dt*dt/2*cos(tht_mid) 0  0;
+%           0 0            1                   0                       dt                0  0;
+%           0 0            0                   1                       0                 0  0;
+%           0 0            0                   0                       1                 0  0;
+%           0 0            0                   0                       0                 1  0;
+%           0 0            0                   0                       0                 0  1];
     P_pre     = Ak*P_est*Ak' + Qk;               % Extrapolate error covariance
     
     % ENCODER MEASUREMENT: (every time step)
     H = H_enc;
-%     Rk = Rk_enc*[Vr_true 0 0;0 Vl_true 0; 0 0 1];
-%     Z  = [Dr/dt; Dl/dt; w+sigma_gyro/10*randn];
     Rk = Rk_enc*[Vr_true 0;0 Vl_true];
     Z  = [Dr/dt; Dl/dt];
     Zest  = H*x_est_pre;
     innov = Z - Zest;    % Create the innovation (measurement-prediction)
-%     velmeas = [(Dr/dt+Dl/dt)/2; (Dr/dt-Dl/dt)/b; Z(3)];
-%     movAvg = [movAvg(:,2:end) velmeas];
-%     hist_movavg(i+1,:) = mean(movAvg,2);
     
     if meas_enc == 1
         K = P_pre*H'*inv(H*P_pre*H' + Rk_enc);      % Calculate Kalman gain
@@ -285,7 +282,7 @@ for j=1:len
     temp = err_all(j,:)'./(3*std_all);
     err_norm(j,1) = sqrt(temp'*temp/length(temp));
 end
-filter_diverged = sum(err_norm>20)
+filter_diverged = sum(err_norm>20);
 
 err_x   = hist_est(:,1)-hist_state(:,1);
 err_y   = hist_est(:,2)-hist_state(:,2);
@@ -294,8 +291,6 @@ err_v = hist_est(:,4)-hist_state(:,4);
 err_w = hist_est(:,5)-hist_state(:,5);
 err_vRoff = hist_est(:,6)-hist_state(:,6);
 err_vLoff = hist_est(:,7)-hist_state(:,7);
-% err_vAcl = hist_est(:,8)-hist_state(:,8);
-% err_wAcl = hist_est(:,9)-hist_state(:,9);
 std_x   = sqrt(hist_cov(:,1,1));
 std_y   = sqrt(hist_cov(:,2,2));
 std_tht = sqrt(hist_cov(:,3,3));
@@ -303,137 +298,17 @@ std_v = sqrt(hist_cov(:,4,4));
 std_w = sqrt(hist_cov(:,5,5));
 std_vRoff = sqrt(hist_cov(:,6,6));
 std_vLoff = sqrt(hist_cov(:,7,7));
-% std_vAcl = sqrt(hist_cov(:,8,8));
-% std_wAcl = sqrt(hist_cov(:,9,9));
 
 disterr = sqrt(err_x.^2+err_y.^2);
-rms_dist = sqrt(mean(disterr.^2))
+rms_dist = sqrt(mean(disterr.^2));
 rmserr_x   = sqrt(mean(err_x.^2));
 rmserr_y   = sqrt(mean(err_y.^2));
-rmserr_tht = sqrt(mean(err_tht.^2))
-rmserr_v   = sqrt(mean(err_v.^2))
-rmserr_w   = sqrt(mean(err_w.^2))
-rmserr_vRoff = sqrt(mean(err_vRoff.^2))
-rmserr_vLoff = sqrt(mean(err_vLoff.^2))
-
-%% Truth Plots
-close all
-figure
-plot(hist_state(:,1),hist_state(:,2),'b','LineWidth',3)
-title('True track (b)');
-xlabel('x (m)');
-ylabel('y (m)');
-
-figure
-t = 0:dt:T;
-subplot(2,1,1)
-plot(t,hist_state(:,4),'b')
-title('True Velocity (b)');
-xlabel('Time (s)');
-ylabel('Forward Velocity (m/s)');
-ylim([-1,2])
-subplot(2,1,2)
-plot(t,hist_state(:,5),'b')
-ylim([-1,1])
-title('True Angular Velocity (b)');
-xlabel('Time (s)');
-ylabel('Angular Velocity (rad/s)');
-
-%% Plots
-close all
-figure
-plot(hist_state(:,1),hist_state(:,2),'b','LineWidth',3)
-hold on
-plot(hist_est(:,1),hist_est(:,2),'r-x') %,hist_est2(:,1),hist_est2(:,2),'g-x')
-title('True track (b) vs Esimated track (r)');
-
-figure
-subplot(3,1,1)
-t = 0:dt:T;
-trim = 30;
-plot(t(trim:end),err_x(trim:end),'b',t(trim:end),err_x(trim:end)+3*std_x(trim:end),'r-',t(trim:end),err_x(trim:end)-3*std_x(trim:end),'r-');
-grid on
-title('X Error +- 3*Sigma');
-
-subplot(3,1,2)
-plot(t(trim:end),err_y(trim:end),'b',t(trim:end),err_y(trim:end)+3*std_y(trim:end),'r-',t(trim:end),err_y(trim:end)-3*std_y(trim:end),'r-');
-grid on
-title('Y Error +- 3*Sigma');
-
-subplot(3,1,3)
-plot(t(trim:end),err_tht(trim:end),'b',t(trim:end),err_tht(trim:end)+3*std_tht(trim:end),'r-',t(trim:end),err_tht(trim:end)-3*std_tht(trim:end),'r-');
-grid on
-title('Theta Error +- 3*Sigma');
-
-figure
-plot(t,hist_state(:,3),'b',t,hist_est(:,3),'r')
-title('True heading (b) vs Estimated heading (r)');
-
-figure
-subplot(2,1,1)
-plot(t,hist_state(:,4),'b',t,hist_est(:,4),'r')
-title('True Velocity (b) vs Estimated Velocity (r)');
-subplot(2,1,2)
-plot(t,hist_state(:,5),'b',t,hist_est(:,5),'r')
-title('True Omega (b) vs Estimated Omega (r)');
-
-figure
-subplot(2,1,1)
-trim = 10;
-plot(t(trim:end),err_v(trim:end),'b',t(trim:end),err_v(trim:end)+3*std_v(trim:end),'r-',t(trim:end),err_v(trim:end)-3*std_v(trim:end),'r-');
-title('Velocity Error +- 3*sigma');
-subplot(2,1,2)
-plot(t(trim:end),err_w(trim:end),'b',t(trim:end),err_w(trim:end)+3*std_w(trim:end),'r-',t(trim:end),err_w(trim:end)-3*std_w(trim:end),'r-');
-title('Omega Error +- 3*sigma');
+rmserr_tht = sqrt(mean(err_tht.^2));
+rmserr_v   = sqrt(mean(err_v.^2));
+rmserr_w   = sqrt(mean(err_w.^2));
+rmserr_vRoff = sqrt(mean(err_vRoff.^2));
+rmserr_vLoff = sqrt(mean(err_vLoff.^2));
 
 
-figure
-subplot(2,1,1)
-plot(t,hist_state(:,6),'b',t,hist_est(:,6),'r')
-title('True Right Wheel Offset (b) vs Estimated Right Wheel Offset (r)');
-subplot(2,1,2)
-plot(t,hist_state(:,7),'b',t,hist_est(:,7),'r')
-title('True Left Wheel Offset (b) vs Estimated Left Wheel Offset (r)');
-
-figure
-subplot(2,1,1)
-trim = 10;
-plot(t(trim:end),err_vRoff(trim:end),'b',t(trim:end),err_vRoff(trim:end)+3*std_vRoff(trim:end),'r-',t(trim:end),err_vRoff(trim:end)-3*std_vRoff(trim:end),'r-');
-title('Right Wheel Offset Error +- 3*sigma');
-subplot(2,1,2)
-plot(t(trim:end),err_vLoff(trim:end),'b',t(trim:end),err_vLoff(trim:end)+3*std_vLoff(trim:end),'r-',t(trim:end),err_vLoff(trim:end)-3*std_vLoff(trim:end),'r-');
-title('Left Wheel Offset Error +- 3*sigma');
-
-
-% figure
-% plot(t(hist_iter(:,1)>0),hist_iter(hist_iter(:,1)>0,1))
-% ylim([0 max(hist_iter(:,1)+5)])
-% title('Number of iterations run for GPS measurement');
-
-figure
-plot(t,err_norm)
-title('normalized error in all states')
-
-% figure
-% subplot(2,1,1)
-% plot(t,hist_state(:,8),'b',t,hist_est(:,8),'r')
-% title('True V accel (b) vs Estimated V accel (r)');
-% subplot(2,1,2)
-% plot(t,hist_state(:,9),'b',t,hist_est(:,9),'r')
-% title('True W accel (b) vs Estimated W accel (r)');
-% 
-% figure
-% subplot(2,1,1)
-% trim = 10;
-% plot(t(trim:end),err_vAcl(trim:end),'b',t(trim:end),err_vAcl(trim:end)+3*std_vAcl(trim:end),'r-',t(trim:end),err_vAcl(trim:end)-3*std_vAcl(trim:end),'r-');
-% title('V accel Error +- 3*sigma');
-% subplot(2,1,2)
-% plot(t(trim:end),err_wAcl(trim:end),'b',t(trim:end),err_wAcl(trim:end)+3*std_wAcl(trim:end),'r-',t(trim:end),err_wAcl(trim:end)-3*std_wAcl(trim:end),'r-');
-% title('W accel Error +- 3*sigma');
-
-
-% figure
-% plot(t,hist_movavg(:,2),'b',t,hist_movavg(:,3),'r');
-% title('Omega Moving Average: Encoders (b), Gyro (r)');
-
+end
 

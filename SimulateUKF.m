@@ -32,38 +32,7 @@ if length(x_est) >=7
 end
 
 % % CREATE SYSTEM
-f_sys_9 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
-                x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
-                x(3)+x(5)*dt;
-                x(4)+x(8)*dt;
-                x(5)+x(9)*dt;
-                x(6);
-                x(7);
-                x(8);
-                x(9)];
-f_sys_7 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
-                x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
-                x(3)+x(5)*dt;
-                x(4);
-                x(5);
-                x(6);
-                x(7)];
-f_sys_5 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
-                x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
-                x(3)+x(5)*dt;
-                x(4);
-                x(5);];
-f_sys = f_sys_7;   
-% % System 1: 7 States: [x;y;tht;v;w;verr1;verr2]
-Asys_9 = @(x,dt) [1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2) 0  0 0 0;
-           0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2) 0  0 0 0;
-           0 0            1                         0                       dt                       0  0 0 0;
-           0 0            0                         1                       0                        0  0 dt 0;
-           0 0            0                         0                       1                        0  0 0 dt;
-           0 0            0                         0                       0                        1  0 0 0;
-           0 0            0                         0                       0                        0  1 0 0;
-           0 0            0                         0                       0                        0  0 1 0;
-           0 0            0                         0                       0                        0  0 0 1];
+% No acceleration in this implementation
 Asys_7 = @(x,dt) [1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2) 0  0;
            0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2) 0  0;
            0 0            1                         0                       dt                       0  0;
@@ -71,13 +40,15 @@ Asys_7 = @(x,dt) [1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*
            0 0            0                         0                       1                        0  0;
            0 0            0                         0                       0                        1  0;
            0 0            0                         0                       0                        0  1];
-% % System 2: 5 States: [x;y;tht;v;w]
-Asys_5 = @(x,dt) [ 1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2);
-                   0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2);
-                   0 0            1                         0                       dt                      ;
-                   0 0            0                         1                       0                       ;
-                   0 0            0                         0                       1                       ];
 Asys = Asys_7;
+f_sys_7 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
+                x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
+                x(3)+x(5)*dt;
+                x(4);
+                x(5);
+                x(6);
+                x(7)];
+f_sys = f_sys_7;               
 
 % ASSIGN PROCESS NOISE
 sigma_x = .01;        % Uncertainty in x
@@ -104,25 +75,20 @@ Vl_sigma = 0;%.05;        % Uncertainty in right wheel
 % ENCODER MEASUREMENT
 H_enc_9 = [0 0 0 1  b/2 1 0 0 0;
          0 0 0 1 -b/2 0 1 0 0];
-% H_enc_7 = [0 0 0 1  b/2 1 0 ;
-%            0 0 0 1 -b/2 0 1;
-%            0 0 0 0   1  0 0];
 H_enc_7 = [0 0 0 1  b/2 1 0 ;
-           0 0 0 1 -b/2 0 1];
+         0 0 0 1 -b/2 0 1];
 H_enc_5 = [0 0 0 1  b/2;
          0 0 0 1 -b/2];
 H_enc = H_enc_7;
 sigma_enc = .001; % make this speed-dependent?
-sigma_gyro = 0.05;
 sigma_v = 0.1;
 sigma_w = 0.1;
 R_enc = [sigma_v^2 0; 0 sigma_w^2];
-% R_enc = [sigma_v^2 0 0; 0 sigma_w^2 0;0 0 sigma_gyro^2];
 Rk_enc = R_enc*dt;
-meas_enc = 1;
+meas_enc = 0;
 
 % GPS MEASUREMENT
-xarm = 0; % Lever arm offset
+xarm = 0.5; % Lever arm offset
 yarm = 0;
 % H_gps = [ 1 0 0 0 0 0 0;
 %           0 1 0 0 0 0 0];
@@ -137,6 +103,10 @@ H_gps_5 = @(x) [ 1 0 -xarm*sin(x(3))-yarm*cos(x(3)) 0 0;
 H_gps = H_gps_7;
 h_gps = @(x) [x(1) + xarm*cos(x(3)) - yarm*sin(x(3));
               x(2) + xarm*sin(x(3)) + yarm*cos(x(3))];
+h_sys = @(x) [x(1) + xarm*cos(x(3)) - yarm*sin(x(3));
+              x(2) + xarm*sin(x(3)) + yarm*cos(x(3));
+              x(4) + b/2*x(5) + x(6);
+              x(4) - b/2*x(5) + x(7)];
 iekf_max = 1;
 sigma_gps = .05;
 sigma_head = .04;
@@ -152,7 +122,6 @@ hist_est   = zeros(len+1,length(x_true));
 hist_est2   = zeros(len+1,length(x_true));
 hist_cov   = zeros(len+1,length(x_true),length(x_true));
 hist_iter = zeros(len+1,1);
-hist_movavg = zeros(len+1,3);
 hist_state(1,:) = x_true;
 hist_est(1,:)   = x_est;
 % hist_est2(1,:)   = x_est2;
@@ -171,7 +140,7 @@ track = [30 1 0;
          20 0.5 0.3];
 tracksum = cumsum(track(:,1));
 track = [track;
-         T-tracksum(end) 0.2 0];
+         T-tracksum(end) 0.5 0];
 tracksum = [tracksum; T];
 trackindex = 1;
 vdot = 1;
@@ -179,7 +148,21 @@ wdot = 1;
 V = 0;
 w = 0;
 
-movAvg = zeros(3,10);
+% % Old track
+% track(1:40/dt,1) = 1;     % Demo velocity
+% track(1:40/dt,2) = 0;    % Demo omega
+% track(40/dt:50/dt,1) = 1;     % Demo velocity
+% track(40/dt:50/dt,2) = .1;    % Demo omega
+% track(50/dt:70/dt,1) = 1;     % Demo velocity
+% track(50/dt:70/dt,2) = 0;    % Demo omega
+% track(70/dt:80/dt,1) = .5;     % Demo velocity
+% track(70/dt:80/dt,2) = -.5;    % Demo omega
+% track(80/dt:90/dt,1) = 1;     % Demo velocity
+% track(80/dt:90/dt,2) = 0;    % Demo omega
+% track(90/dt:92/dt,1) = 0;     % Demo velocity
+% track(90/dt:92/dt,2) = .1;    % Demo omega
+% track(92/dt:end,1) = 0.2;     % Demo velocity
+% track(92/dt:end,2) = 0;    % Demo omega
 
 for i = 1:len
     
@@ -199,7 +182,7 @@ for i = 1:len
     
     % SIMULATE TRUE ROBOT MOTION
     x_true = SimulateMotion(Vr_true,Vl_true,x_true,b,dt);
-    [vRoff, vLoff] = SimulateEncoderVelocityFault2(i,dt);
+    [vRoff, vLoff] = SimulateEncoderVelocityFault1(i,dt);
     x_true = [x_true; V; w; vRoff; vLoff];
 %     x_true = [x_true; V; w; vRoff; vLoff; vaccel; waccel];
 %     x_true = [x_true; V; w;];
@@ -207,66 +190,78 @@ for i = 1:len
     
     % PREDICTION: (every time step)
     % Estimate equations:
+%     x_est_pre = f_sys(x_est,dt);
+%     
+%     Ak = Asys(x_est,dt);
+%     P_pre     = Ak*P_est*Ak' + Qk;               % Extrapolate error covariance
+    
+    % MEASUREMENT
     Dr = Vr_true*dt + sigma_enc*randn + vRoff*dt; % Measure encoder displacement
     Dl = Vl_true*dt + sigma_enc*randn + vLoff*dt;
-    x_est_pre = f_sys(x_est);
+    noise = sqrt(Rk_gps)*randn(length(Rk_gps),1);
+    Ztrue = h_gps(x_true);
+    Z_gps = Ztrue + noise;       % Take the measurement, adding simulated noise using randn
+    temp1 = h_sys(x_true);
+    temp2 = h_sys(x_est);
+    Z = [Z_gps; Dr/dt; Dl/dt];
+    Rk = [Rk_gps(1,1) 0 0 0; 0 Rk_gps(2,2) 0 0; 0 0 Rk_enc(1,1) 0; 0 0 0 Rk_enc(2,2)];
     
-    Ak = Asys(x_est,dt);
-    P_pre     = Ak*P_est*Ak' + Qk;               % Extrapolate error covariance
+    % PREDICTION:
+    Rk(1,1) = Rk(1,1)*5;
+    Rk(2,2) = Rk(2,2)*5;
+    [x_est, P_est] = ukf(f_sys,x_est,P_est,h_sys,Z,Qk,Rk);
     
-    % ENCODER MEASUREMENT: (every time step)
-    H = H_enc;
-%     Rk = Rk_enc*[Vr_true 0 0;0 Vl_true 0; 0 0 1];
-%     Z  = [Dr/dt; Dl/dt; w+sigma_gyro/10*randn];
-    Rk = Rk_enc*[Vr_true 0;0 Vl_true];
-    Z  = [Dr/dt; Dl/dt];
-    Zest  = H*x_est_pre;
-    innov = Z - Zest;    % Create the innovation (measurement-prediction)
-%     velmeas = [(Dr/dt+Dl/dt)/2; (Dr/dt-Dl/dt)/b; Z(3)];
-%     movAvg = [movAvg(:,2:end) velmeas];
-%     hist_movavg(i+1,:) = mean(movAvg,2);
     
-    if meas_enc == 1
-        K = P_pre*H'*inv(H*P_pre*H' + Rk_enc);      % Calculate Kalman gain
-        x_est_int = x_est_pre + K*(innov);      % State Estimate Update
-        P_int     = (eye(length(x_true),length(x_true))-K*H)*P_pre;       % Error Covariance Update
-    else
-        x_est_int = x_est_pre;
-        P_int = P_pre;
-    end
-    
-    % MEASUREMENT: (only when we get a measurement)
-    if mod(i,timestep/dt) == 0 %GPS Update at 5Hz, for example
-        Rk = Rk_gps;  % Create noise matrix
-        noise = sqrt(Rk)*randn(length(Rk),1);
-        Ztrue = h_gps(x_true);
-        Z     = Ztrue + noise;       % Take the measurement, adding simulated noise using randn
-        
-        xit = x_est_int;
-        for it = 1:iekf_max
-%             Zest  = [x_est_int(1) + xarm*cos(x_est_int(3)) - yarm*sin(x_est_int(3));
-%                      x_est_int(2) + xarm*sin(x_est_int(3)) + yarm*cos(x_est_int(3))];
-            innov  = Z - h_gps(xit(:,it)) - H_gps(xit(:,it))*(xit(:,1)-xit(:,it));    % Create the innovation (measurement-prediction)
-
-            H = H_gps(xit(:,it));
-            Rk = Rk_gps*5;
-            K = P_int*H'*inv(H*P_int*H' + Rk);      % Calculate Kalman gain
-            x_est = x_est_int + K*(innov);  % State Estimate Update
-            P_est = (eye(length(x_true),length(x_true))-K*H)*P_int;           % Error Covariance Update
-            %         diff = x_est-x_est_pre;
-            hist_iter(i+1,1) = it;
-            if it > 1
-                xdiff = xit(:,it)-xit(:,it-1);
-                if sqrt(xdiff'*xdiff) < 0.0005
-                    break;
-                end
-            end
-            xit = [xit x_est];
-        end
-    else
-        x_est = x_est_int;
-        P_est = P_int;
-    end
+%     % ENCODER MEASUREMENT: (every time step)
+%     H = H_enc;
+%     Rk = Rk_enc*[Vr_true 0;0 Vl_true];
+%     Dr = Vr_true*dt + sigma_enc*randn + vRoff*dt; % Measure encoder displacement
+%     Dl = Vl_true*dt + sigma_enc*randn + vLoff*dt;
+%     Z  = [Dr/dt; Dl/dt];
+%     Zest  = H*x_est_pre;
+%     innov = Z - Zest;    % Create the innovation (measurement-prediction)
+%     
+%     if meas_enc == 1
+%         K = P_pre*H'*inv(H*P_pre*H' + Rk_enc);      % Calculate Kalman gain
+%         x_est_int = x_est_pre + K*(innov);      % State Estimate Update
+%         P_int     = (eye(length(x_true),length(x_true))-K*H)*P_pre;       % Error Covariance Update
+%     else
+%         x_est_int = x_est_pre;
+%         P_int = P_pre;
+%     end
+%     
+%     % MEASUREMENT: (only when we get a measurement)
+%     if mod(i,timestep/dt) == 0 %GPS Update at 5Hz, for example
+%         Rk = Rk_gps;  % Create noise matrix
+%         noise = sqrt(Rk)*randn(length(Rk),1);
+%         Ztrue = h_gps(x_true);
+%         Z     = Ztrue + noise;       % Take the measurement, adding simulated noise using randn
+%         
+%         xit = x_est_int;
+%         for it = 1:iekf_max
+% %             Zest  = [x_est_int(1) + xarm*cos(x_est_int(3)) - yarm*sin(x_est_int(3));
+% %                      x_est_int(2) + xarm*sin(x_est_int(3)) + yarm*cos(x_est_int(3))];
+%             innov  = Z - h_gps(xit(:,it)) - H_gps(xit(:,it))*(xit(:,1)-xit(:,it));    % Create the innovation (measurement-prediction)
+% 
+%             H = H_gps(xit(:,it));
+%             Rk = Rk_gps*5;
+%             K = P_int*H'*inv(H*P_int*H' + Rk);      % Calculate Kalman gain
+%             x_est = x_est_int + K*(innov);  % State Estimate Update
+%             P_est = (eye(length(x_true),length(x_true))-K*H)*P_int;           % Error Covariance Update
+%             %         diff = x_est-x_est_pre;
+%             hist_iter(i+1,1) = it;
+%             if it > 1
+%                 xdiff = xit(:,it)-xit(:,it-1);
+%                 if sqrt(xdiff'*xdiff) < 0.0005
+%                     break;
+%                 end
+%             end
+%             xit = [xit x_est];
+%         end
+%     else
+%         x_est = x_est_int;
+%         P_est = P_int;
+%     end
     
     x_est(3) = CoerceAngle(x_est(3));
     
@@ -294,8 +289,6 @@ err_v = hist_est(:,4)-hist_state(:,4);
 err_w = hist_est(:,5)-hist_state(:,5);
 err_vRoff = hist_est(:,6)-hist_state(:,6);
 err_vLoff = hist_est(:,7)-hist_state(:,7);
-% err_vAcl = hist_est(:,8)-hist_state(:,8);
-% err_wAcl = hist_est(:,9)-hist_state(:,9);
 std_x   = sqrt(hist_cov(:,1,1));
 std_y   = sqrt(hist_cov(:,2,2));
 std_tht = sqrt(hist_cov(:,3,3));
@@ -303,8 +296,6 @@ std_v = sqrt(hist_cov(:,4,4));
 std_w = sqrt(hist_cov(:,5,5));
 std_vRoff = sqrt(hist_cov(:,6,6));
 std_vLoff = sqrt(hist_cov(:,7,7));
-% std_vAcl = sqrt(hist_cov(:,8,8));
-% std_wAcl = sqrt(hist_cov(:,9,9));
 
 disterr = sqrt(err_x.^2+err_y.^2);
 rms_dist = sqrt(mean(disterr.^2))
@@ -316,28 +307,6 @@ rmserr_w   = sqrt(mean(err_w.^2))
 rmserr_vRoff = sqrt(mean(err_vRoff.^2))
 rmserr_vLoff = sqrt(mean(err_vLoff.^2))
 
-%% Truth Plots
-close all
-figure
-plot(hist_state(:,1),hist_state(:,2),'b','LineWidth',3)
-title('True track (b)');
-xlabel('x (m)');
-ylabel('y (m)');
-
-figure
-t = 0:dt:T;
-subplot(2,1,1)
-plot(t,hist_state(:,4),'b')
-title('True Velocity (b)');
-xlabel('Time (s)');
-ylabel('Forward Velocity (m/s)');
-ylim([-1,2])
-subplot(2,1,2)
-plot(t,hist_state(:,5),'b')
-ylim([-1,1])
-title('True Angular Velocity (b)');
-xlabel('Time (s)');
-ylabel('Angular Velocity (rad/s)');
 
 %% Plots
 close all
@@ -413,27 +382,3 @@ title('Left Wheel Offset Error +- 3*sigma');
 figure
 plot(t,err_norm)
 title('normalized error in all states')
-
-% figure
-% subplot(2,1,1)
-% plot(t,hist_state(:,8),'b',t,hist_est(:,8),'r')
-% title('True V accel (b) vs Estimated V accel (r)');
-% subplot(2,1,2)
-% plot(t,hist_state(:,9),'b',t,hist_est(:,9),'r')
-% title('True W accel (b) vs Estimated W accel (r)');
-% 
-% figure
-% subplot(2,1,1)
-% trim = 10;
-% plot(t(trim:end),err_vAcl(trim:end),'b',t(trim:end),err_vAcl(trim:end)+3*std_vAcl(trim:end),'r-',t(trim:end),err_vAcl(trim:end)-3*std_vAcl(trim:end),'r-');
-% title('V accel Error +- 3*sigma');
-% subplot(2,1,2)
-% plot(t(trim:end),err_wAcl(trim:end),'b',t(trim:end),err_wAcl(trim:end)+3*std_wAcl(trim:end),'r-',t(trim:end),err_wAcl(trim:end)-3*std_wAcl(trim:end),'r-');
-% title('W accel Error +- 3*sigma');
-
-
-% figure
-% plot(t,hist_movavg(:,2),'b',t,hist_movavg(:,3),'r');
-% title('Omega Moving Average: Encoders (b), Gyro (r)');
-
-
