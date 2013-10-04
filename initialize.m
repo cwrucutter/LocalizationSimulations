@@ -6,6 +6,7 @@ tht0 = 2;   % Initial theta
 % [x; y; tht; v; w; vRerr; vLerr]
 x_true_E = [x0; y0; tht0; 0; 0; 0; 0; tpmR-10; tpmL; b];
 x_true_F = [x0; y0; tht0; 0; 0; tpmR-10; tpmL; b];
+x_true_G = [x0; y0; tht0; 0; 0; 1; 1; 1];
 x_true_9 = [x0; y0; tht0; 0; 0; 0; 0; 0; 0];
 x_true_7 = [x0; y0; tht0; 0; 0; 0; 0];
 x_true_5 = [x0; y0; tht0; 0; 0];
@@ -22,6 +23,14 @@ f_sys_E = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
                 x(9); %tpmL
                 x(10)]; %wheelbase
 f_sys_F = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
+                x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
+                x(3)+x(5)*dt;
+                x(4); %velocity
+                x(5); %angular vel
+                x(6); %tpmR
+                x(7); %tpmL
+                x(8)]; %wheelbase
+f_sys_G = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
                 x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
                 x(3)+x(5)*dt;
                 x(4); %velocity
@@ -72,6 +81,15 @@ Asys_F = @(x,dt) ...
      0 0            0                         0                       0                        1 0 0 ;
      0 0            0                         0                       0                        0 1 0 ;
      0 0            0                         0                       0                        0 0 1 ];
+Asys_G = @(x,dt) ...
+    [1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2) 0 0 0 ;
+     0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2) 0 0 0 ;
+     0 0            1                         0                       dt                       0 0 0 ;
+     0 0            0                         1                       0                        0 0 0 ;
+     0 0            0                         0                       1                        0 0 0 ;
+     0 0            0                         0                       0                        1 0 0 ;
+     0 0            0                         0                       0                        0 1 0 ;
+     0 0            0                         0                       0                        0 0 1 ];
 Asys_9 = @(x,dt) [1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2) 0  0 0 0;
            0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2) 0  0 0 0;
            0 0            1                         0                       dt                       0  0 0 0;
@@ -109,12 +127,18 @@ sigma_wdot = .5;
 sigma_tpmR = 0.01;
 sigma_tpmL = 0.01;
 sigma_b = 0.0001;
+sigma_tpmR_scale = 0.1;
+sigma_tpmL_scale = 0.1;
+sigma_b_scale = 01.1;
 Q_E = [sigma_x^2 0 0 0 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0 0 0 0;
        0 0 0 sigma_v^2 0 0 0 0 0 0; 0 0 0 0 sigma_w^2 0 0 0 0 0; 0 0 0 0 0 sigma_vRerr^2 0 0 0 0; 0 0 0 0 0 0 sigma_vLerr^2 0 0 0;
        0 0 0 0 0 0 0 sigma_tpmR^2 0 0; 0 0 0 0 0 0 0 0 sigma_tpmL^2 0; 0 0 0 0 0 0 0 0 0 sigma_b^2];
 Q_F = [sigma_x^2 0 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0 0;
        0 0 0 sigma_v^2 0 0 0 0; 0 0 0 0 sigma_w^2 0 0 0;
        0 0 0 0 0 sigma_tpmR^2 0 0; 0 0 0 0 0 0 sigma_tpmL^2 0; 0 0 0 0 0 0 0 sigma_b^2];
+Q_G = [sigma_x^2 0 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0 0;
+       0 0 0 sigma_v^2 0 0 0 0; 0 0 0 0 sigma_w^2 0 0 0;
+       0 0 0 0 0 sigma_tpmR_scale^2 0 0; 0 0 0 0 0 0 sigma_tpmL_scale^2 0; 0 0 0 0 0 0 0 sigma_b_scale^2];
 Q_9 = [sigma_x^2 0 0 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0 0 0;
        0 0 0 sigma_v^2 0 0 0 0 0; 0 0 0 0 sigma_w^2 0 0 0 0; 0 0 0 0 0 sigma_vRerr^2 0 0 0; 0 0 0 0 0 0 sigma_vLerr^2 0 0;
        0 0 0 0 0 0 0 sigma_vdot^2 0; 0 0 0 0 0 0 0 0 sigma_wdot^2; ];
@@ -132,6 +156,9 @@ h_enc_E = @(x, dt) dt * ...
 h_enc_F = @(x, dt) dt * ...
     [x(6)*x(4) + x(6)*x(8)/2*x(5);
      x(7)*x(4) - x(7)*x(8)/2*x(5)];
+h_enc_G = @(x, dt) ...
+    [x(6)*x(4) + x(6)*b*x(8)*x(5)/2;
+     x(7)*x(4) - x(7)*b*x(8)*x(5)/2];
 h_enc_7 = @(x, dt) dt * ...
     [tpmR*x(4) + tpmR*b/2*x(5) + tpmR*x(6);
      tpmL*x(4) - tpmL*b/2*x(5) + tpmL*x(7)];
@@ -141,6 +168,9 @@ H_enc_E = @(x, dt) dt * ...
 H_enc_F = @(x, dt) dt * ...
     [0 0 0 x(6)  x(6)*x(8)/2 (x(4)+x(8)/2*x(5)) 0  x(6)/2*x(5);
      0 0 0 x(7) -x(7)*x(8)/2 0 (x(4)-x(8)/2*x(5)) -x(7)/2*x(5)];
+H_enc_G = @(x, dt) ...
+    [0 0 0 x(6)  x(6)*b*x(8)/2 (x(4)+b*x(8)*x(5)/2) 0  x(6)*b*x(5)/2 ;
+     0 0 0 x(7) -x(7)*b*x(8)/2 0 (x(4)-b*x(8)*x(5)/2) -x(7)*b*x(5)/2];
 H_enc_9 = @(x) dt * ...
     [0 0 0 tpmR  tpmR*b/2 tpmR 0 0 0;
      0 0 0 tpmL -tpmL*b/2 0 tpmL 0 0];
@@ -155,12 +185,13 @@ H_enc_5 = @(x, dt) dt * ...
      0 0 0 tpmL -tpmL*b/2];
 sigma_enc = .001; % noise on encoder measurement % make this speed-dependent?
 sigma_gyro = 0.05;
-sigma_vR = 0.001*dt*tpmR;
-sigma_vL = 0.001*dt*tpmL;
+sigma_vR = 0.01*dt*tpmR;
+sigma_vL = 0.01*dt*tpmL;
 R_enc = [sigma_vR^2 0; 0 sigma_vL^2];
 % R_enc = [sigma_v^2 0 0; 0 sigma_w^2 0;0 0 sigma_gyro^2];
 Rk_enc = R_enc*dt;
 meas_enc = 1;
+meas_gyro = 1;
 
 % GPS MEASUREMENT
 xarm = 0; % Lever arm offset
@@ -172,6 +203,8 @@ yarm = 0;
 H_gps_E = @(x) [ 1 0 -xarm*sin(x(3))-yarm*cos(x(3)) 0 0 0 0 0 0 0; 
                0 1  xarm*cos(x(3))-yarm*sin(x(3)) 0 0 0 0 0 0 0];
 H_gps_F = @(x) [ 1 0 -xarm*sin(x(3))-yarm*cos(x(3)) 0 0 0 0 0; 
+               0 1  xarm*cos(x(3))-yarm*sin(x(3)) 0 0 0 0 0];
+H_gps_G = @(x) [ 1 0 -xarm*sin(x(3))-yarm*cos(x(3)) 0 0 0 0 0; 
                0 1  xarm*cos(x(3))-yarm*sin(x(3)) 0 0 0 0 0];
 H_gps_9 = @(x) [ 1 0 -xarm*sin(x(3))-yarm*cos(x(3)) 0 0 0 0 0 0; 
                0 1  xarm*cos(x(3))-yarm*sin(x(3)) 0 0 0 0 0 0];
@@ -235,6 +268,14 @@ elseif settings.system == 5
     h_enc = h_enc_F;
     H_enc = H_enc_F;
     H_gps = H_gps_F;
+elseif settings.system == 6
+    x_true = x_true_G;
+    f_sys = f_sys_G;
+    Asys = Asys_G;
+    Q = Q_G;
+    h_enc = h_enc_G;
+    H_enc = H_enc_G;
+    H_gps = H_gps_G;
 else
     error('Not a valid option for settings.system')
 end
@@ -252,7 +293,14 @@ if settings.system == 4
     P_est(10,10) = .005;
 end
 if settings.system == 5
-    P_est(8,8) = .005;
+    P_est(6,6) = 5;
+    P_est(7,7) = 5;
+    P_est(8,8) = .05;
+end
+if settings.system == 6
+    P_est(6,6) = 0.1;
+    P_est(7,7) = 0.1;
+    P_est(8,8) = 0.1;
 end
 
 

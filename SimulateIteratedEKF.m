@@ -18,7 +18,7 @@ tpmL = 25000;
 %        3 = 9-state
 %        4 = 7-state with wheel odometry
 %        5 = 5-state with wheel odometry
-settings.system = 5;
+settings.system = 6;
 
 %% Initializations
 
@@ -68,8 +68,8 @@ for i = 1:len
     end
     [V, vaccel] = AccelLimit(track(trackindex,2),V,vdot,dt);
     [w, waccel] = AccelLimit(track(trackindex,3),w,wdot,dt);
-    Vr = V + b*w/2; %Calculate Vr
-    Vl = V - b*w/2; %Calculate Vl
+    Vr = V + b*1*w/2; %Calculate Vr
+    Vl = V - b*1*w/2; %Calculate Vl
     
     % ACTUATOR NOISE
     % Simulate the imperfect actuator by adding noise to Vl and Vr
@@ -91,6 +91,8 @@ for i = 1:len
         x_true = [x_true; V; w; vRoff; vLoff; tpmR; tpmL; b];
     elseif settings.system == 5
         x_true = [x_true; V; w; tpmR; tpmL; b];
+    elseif settings.system == 6
+        x_true = [x_true; V; w; 1; 1; 1];
     else
         error('Not a valid option for settings.system')
     end
@@ -110,8 +112,8 @@ for i = 1:len
 %     Rk = Rk_enc*[Vr_true 0 0;0 Vl_true 0; 0 0 1];
 %     Z  = [Dr/dt; Dl/dt; w+sigma_gyro/10*randn];
     Rk = Rk_enc*[Vr_true 0;0 Vl_true];
-%     Z  = [Dr/dt; Dl/dt];
-    Z  = [Dr*tpmR; Dl*tpmL];
+    Z  = [Dr/dt*1.1; Dl/dt*0.9];
+%     Z  = [Dr*tpmR; Dl*tpmL];
 %     Zest  = H*x_est_pre;
     Zest = h_enc(x_est_pre,dt);
     innov = Z - Zest;    % Create the innovation (measurement-prediction)
@@ -125,6 +127,20 @@ for i = 1:len
         P_int     = (eye(length(x_true),length(x_true))-K*H)*P_pre;       % Error Covariance Update
     else
         x_est_int = x_est_pre;
+        P_int = P_pre;
+    end
+    
+    
+    if meas_gyro == 1
+        Z = x_true(5);
+        Zest = x_est_int(5);
+        H = [0 0 0 0 1 0 0 0];
+        
+        K = P_int*H'*inv(H*P_int*H' + 0.001);      % Calculate Kalman gain
+        x_est_int = x_est_int + K*(Z-Zest);      % State Estimate Update
+        P_int     = (eye(length(x_true),length(x_true))-K*H)*P_int;       % Error Covariance Update
+    else
+        x_est_int = x_est_int;
         P_int = P_pre;
     end
     
@@ -246,7 +262,7 @@ names = { 'X Position';
           'Right Wheel Ticks Per Meter';
           'Left Wheel Ticks Per Meter';
           'Track Width'};
-if settings.system ==5
+if settings.system >= 5
     names = { 'X Position';
               'Y Position';
               'Heading';
