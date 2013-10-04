@@ -1,149 +1,28 @@
 
 %% Simple Robot Differential Drive Simulation v1.0
 % EJ Kreinar
-clear all
+clearvars
 
 % rng(1)
 
 dt = .1;    %Dt
 T = 150;     % Sim time
 b = .5;     %Track Width
+tpmR = 25000;
+tpmL = 25000;
 
-% INITIAL VALUES
-x0 = 1;     % Initial x
-y0 = 1;     % Initial y
-tht0 = 2;   % Initial theta
-% [x; y; tht; v; w; vRerr; vLerr]
-x_true_9 = [x0; y0; tht0; 0; 0; 0; 0; 0; 0];
-x_true_7 = [x0; y0; tht0; 0; 0; 0; 0];
-x_true_5 = [x0; y0; tht0; 0; 0];
-x_true = x_true_7;
+% Settings:
+%    - System: 
+%        1 = 5-state
+%        2 = 7-state
+%        3 = 9-state
+%        4 = 7-state with wheel odometry
+%        5 = 5-state with wheel odometry
+settings.system = 5;
 
-% INITIALIZE ESTIMATES
-phi = eye(length(x_true),length(x_true));
-x_est = x_true;
-P_est = 1*eye(length(x_true),length(x_true));
-for i=1:length(x_est)
-    P_est(i,i) = 10;
-end
-if length(x_est) >=7
-    P_est(6,6) = 1; % set vrerr covariance smaller
-    P_est(7,7) = 1; % Set vLerr covariance smaller
-end
+%% Initializations
 
-% % CREATE SYSTEM
-f_sys_9 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
-                x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
-                x(3)+x(5)*dt;
-                x(4)+x(8)*dt;
-                x(5)+x(9)*dt;
-                x(6);
-                x(7);
-                x(8);
-                x(9)];
-f_sys_7 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
-                x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
-                x(3)+x(5)*dt;
-                x(4);
-                x(5);
-                x(6);
-                x(7)];
-f_sys_5 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
-                x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
-                x(3)+x(5)*dt;
-                x(4);
-                x(5);];
-f_sys = f_sys_7;   
-% % System 1: 7 States: [x;y;tht;v;w;verr1;verr2]
-Asys_9 = @(x,dt) [1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2) 0  0 0 0;
-           0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2) 0  0 0 0;
-           0 0            1                         0                       dt                       0  0 0 0;
-           0 0            0                         1                       0                        0  0 dt 0;
-           0 0            0                         0                       1                        0  0 0 dt;
-           0 0            0                         0                       0                        1  0 0 0;
-           0 0            0                         0                       0                        0  1 0 0;
-           0 0            0                         0                       0                        0  0 1 0;
-           0 0            0                         0                       0                        0  0 0 1];
-Asys_7 = @(x,dt) [1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2) 0  0;
-           0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2) 0  0;
-           0 0            1                         0                       dt                       0  0;
-           0 0            0                         1                       0                        0  0;
-           0 0            0                         0                       1                        0  0;
-           0 0            0                         0                       0                        1  0;
-           0 0            0                         0                       0                        0  1];
-% % System 2: 5 States: [x;y;tht;v;w]
-Asys_5 = @(x,dt) [ 1 0 -x(4)*dt*sin(x(3)+x(5)*dt/2) dt*cos(x(3)+x(5)*dt/2) -x(4)*dt*dt/2*sin(x(3)+x(5)*dt/2);
-                   0 1  x(4)*dt*cos(x(3)+x(5)*dt/2) dt*sin(x(3)+x(5)*dt/2)  x(4)*dt*dt/2*cos(x(3)+x(5)*dt/2);
-                   0 0            1                         0                       dt                      ;
-                   0 0            0                         1                       0                       ;
-                   0 0            0                         0                       1                       ];
-Asys = Asys_7;
-
-% ASSIGN PROCESS NOISE
-sigma_x = .01;        % Uncertainty in x
-sigma_y = .01;        % Uncertainty in y
-sigma_tht = .001;     % Uncertainty in theta
-sigma_v = .3;         % Uncertainty in velocity
-sigma_w = .3;         % Uncertainty in omega
-sigma_vRerr = 0.05;
-sigma_vLerr = 0.05;
-sigma_vdot = .5;
-sigma_wdot = .5;
-Q_9 = [sigma_x^2 0 0 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0 0 0;
-       0 0 0 sigma_v^2 0 0 0 0 0; 0 0 0 0 sigma_w^2 0 0 0 0; 0 0 0 0 0 sigma_vRerr^2 0 0 0; 0 0 0 0 0 0 sigma_vLerr^2 0 0;
-       0 0 0 0 0 0 0 sigma_vdot^2 0; 0 0 0 0 0 0 0 0 sigma_wdot^2; ];
-Q_7 = [sigma_x^2 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0;
-     0 0 0 sigma_v^2 0 0 0; 0 0 0 0 sigma_w^2 0 0; 0 0 0 0 0 sigma_vRerr^2 0; 0 0 0 0 0 0 sigma_vLerr^2];
-Q_5 = [sigma_x^2 0 0 0 0; 0 sigma_y^2 0 0 0; 0 0 sigma_tht^2 0 0;
-     0 0 0 sigma_v^2 0; 0 0 0 0 sigma_w^2];
-Q = Q_7;
-Qk = Q*dt;
-Vr_sigma = 0;%.05;        % Uncertainty in left wheel
-Vl_sigma = 0;%.05;        % Uncertainty in right wheel
-
-% ENCODER MEASUREMENT
-H_enc_9 = [0 0 0 1  b/2 1 0 0 0;
-         0 0 0 1 -b/2 0 1 0 0];
-% H_enc_7 = [0 0 0 1  b/2 1 0 ;
-%            0 0 0 1 -b/2 0 1;
-%            0 0 0 0   1  0 0];
-H_enc_7 = [0 0 0 1  b/2 1 0 ;
-           0 0 0 1 -b/2 0 1];
-H_enc_5 = [0 0 0 1  b/2;
-         0 0 0 1 -b/2];
-H_enc = H_enc_7;
-sigma_enc = .001; % make this speed-dependent?
-sigma_gyro = 0.05;
-sigma_v = 0.1;
-sigma_w = 0.1;
-R_enc = [sigma_v^2 0; 0 sigma_w^2];
-% R_enc = [sigma_v^2 0 0; 0 sigma_w^2 0;0 0 sigma_gyro^2];
-Rk_enc = R_enc*dt;
-meas_enc = 1;
-
-% GPS MEASUREMENT
-xarm = 0; % Lever arm offset
-yarm = 0;
-% H_gps = [ 1 0 0 0 0 0 0;
-%           0 1 0 0 0 0 0];
-%           0 0 1 0 0 ];
-%     0 0 1 ];
-H_gps_9 = @(x) [ 1 0 -xarm*sin(x(3))-yarm*cos(x(3)) 0 0 0 0 0 0; 
-               0 1  xarm*cos(x(3))-yarm*sin(x(3)) 0 0 0 0 0 0];
-H_gps_7 = @(x) [ 1 0 -xarm*sin(x(3))-yarm*cos(x(3)) 0 0 0 0; 
-               0 1  xarm*cos(x(3))-yarm*sin(x(3)) 0 0 0 0];
-H_gps_5 = @(x) [ 1 0 -xarm*sin(x(3))-yarm*cos(x(3)) 0 0; 
-               0 1  xarm*cos(x(3))-yarm*sin(x(3)) 0 0];
-H_gps = H_gps_7;
-h_gps = @(x) [x(1) + xarm*cos(x(3)) - yarm*sin(x(3));
-              x(2) + xarm*sin(x(3)) + yarm*cos(x(3))];
-iekf_max = 1;
-sigma_gps = .05;
-sigma_head = .04;
-R_gps = [ sigma_gps^2 0; 0 sigma_gps^2];
-% R_gps = [ sigma_gps^2 0 0; 0 sigma_gps^2 0; 0 0 sigma_head^2];
-timestep = .2;
-Rk_gps = R_gps*timestep;
+initialize;
 
 % Initialize the history
 len = T/dt;
@@ -199,28 +78,42 @@ for i = 1:len
     
     % SIMULATE TRUE ROBOT MOTION
     x_true = SimulateMotion(Vr_true,Vl_true,x_true,b,dt);
-    [vRoff, vLoff] = SimulateEncoderVelocityFault2(i,dt);
-    x_true = [x_true; V; w; vRoff; vLoff];
-%     x_true = [x_true; V; w; vRoff; vLoff; vaccel; waccel];
-%     x_true = [x_true; V; w;];
+    vRoff = 0; vLoff = 0;
+    %     [vRoff, vLoff] = SimulateEncoderVelocityFault2(i,dt);
+    
+    if settings.system == 1
+        x_true = [x_true; V; w;];
+    elseif settings.system == 2
+        x_true = [x_true; V; w; vRoff; vLoff];
+    elseif settings.system == 3
+        x_true = [x_true; V; w; vRoff; vLoff; vaccel; waccel];
+    elseif settings.system == 4
+        x_true = [x_true; V; w; vRoff; vLoff; tpmR; tpmL; b];
+    elseif settings.system == 5
+        x_true = [x_true; V; w; tpmR; tpmL; b];
+    else
+        error('Not a valid option for settings.system')
+    end
     hist_state(i+1,:) = x_true';
     
     % PREDICTION: (every time step)
     % Estimate equations:
-    Dr = Vr_true*dt + sigma_enc*randn + vRoff*dt; % Measure encoder displacement
-    Dl = Vl_true*dt + sigma_enc*randn + vLoff*dt;
+    Dr = Vr_true*dt + vRoff*dt; % + sigma_enc*randn   % Measure encoder displacement
+    Dl = Vl_true*dt + vLoff*dt; % + sigma_enc*randn
     x_est_pre = f_sys(x_est);
     
     Ak = Asys(x_est,dt);
     P_pre     = Ak*P_est*Ak' + Qk;               % Extrapolate error covariance
     
     % ENCODER MEASUREMENT: (every time step)
-    H = H_enc;
+    H = H_enc(x_est_pre,dt);
 %     Rk = Rk_enc*[Vr_true 0 0;0 Vl_true 0; 0 0 1];
 %     Z  = [Dr/dt; Dl/dt; w+sigma_gyro/10*randn];
     Rk = Rk_enc*[Vr_true 0;0 Vl_true];
-    Z  = [Dr/dt; Dl/dt];
-    Zest  = H*x_est_pre;
+%     Z  = [Dr/dt; Dl/dt];
+    Z  = [Dr*tpmR; Dl*tpmL];
+%     Zest  = H*x_est_pre;
+    Zest = h_enc(x_est_pre,dt);
     innov = Z - Zest;    % Create the innovation (measurement-prediction)
 %     velmeas = [(Dr/dt+Dl/dt)/2; (Dr/dt-Dl/dt)/b; Z(3)];
 %     movAvg = [movAvg(:,2:end) velmeas];
@@ -238,7 +131,8 @@ for i = 1:len
     % MEASUREMENT: (only when we get a measurement)
     if mod(i,timestep/dt) == 0 %GPS Update at 5Hz, for example
         Rk = Rk_gps;  % Create noise matrix
-        noise = sqrt(Rk)*randn(length(Rk),1);
+%         noise = sqrt(Rk)*randn(length(Rk),1);
+        noise = 0*randn(length(Rk),1);
         Ztrue = h_gps(x_true);
         Z     = Ztrue + noise;       % Take the measurement, adding simulated noise using randn
         
@@ -341,6 +235,41 @@ ylabel('Angular Velocity (rad/s)');
 
 %% Plots
 close all
+
+names = { 'X Position';
+          'Y Position';
+          'Heading';
+          'Velocity';
+          'Angular Velocity';
+          'Right Wheel Velocity Err';
+          'Left Wheel Velocity Err';
+          'Right Wheel Ticks Per Meter';
+          'Left Wheel Ticks Per Meter';
+          'Track Width'};
+if settings.system ==5
+    names = { 'X Position';
+              'Y Position';
+              'Heading';
+              'Velocity';
+              'Angular Velocity';
+              'Right Wheel Ticks Per Meter';
+              'Left Wheel Ticks Per Meter';
+              'Track Width'};
+end
+     
+plotStart = 1;
+RMSstate = zeros(length(names),1);
+for ii = 1:length(x_true)
+    figure(plotStart+ii)
+    RMSstate(ii,1) = plot_filter_state(ii, t, hist_state, hist_est, hist_cov);
+    subplot(2,1,1)
+    title(names{ii})
+    subplot(2,1,2)
+    title([names{ii} ' Error']);
+    ylim([-5 5]);
+end
+
+%%
 figure
 plot(hist_state(:,1),hist_state(:,2),'b','LineWidth',3)
 hold on
@@ -351,17 +280,17 @@ figure
 subplot(3,1,1)
 t = 0:dt:T;
 trim = 30;
-plot(t(trim:end),err_x(trim:end),'b',t(trim:end),err_x(trim:end)+3*std_x(trim:end),'r-',t(trim:end),err_x(trim:end)-3*std_x(trim:end),'r-');
+plot(t(trim:end),err_x(trim:end),'b',t(trim:end),3*std_x(trim:end),'r-',t(trim:end),-3*std_x(trim:end),'r-');
 grid on
 title('X Error +- 3*Sigma');
 
 subplot(3,1,2)
-plot(t(trim:end),err_y(trim:end),'b',t(trim:end),err_y(trim:end)+3*std_y(trim:end),'r-',t(trim:end),err_y(trim:end)-3*std_y(trim:end),'r-');
+plot(t(trim:end),err_y(trim:end),'b',t(trim:end),3*std_y(trim:end),'r-',t(trim:end),-3*std_y(trim:end),'r-');
 grid on
 title('Y Error +- 3*Sigma');
 
 subplot(3,1,3)
-plot(t(trim:end),err_tht(trim:end),'b',t(trim:end),err_tht(trim:end)+3*std_tht(trim:end),'r-',t(trim:end),err_tht(trim:end)-3*std_tht(trim:end),'r-');
+plot(t(trim:end),err_tht(trim:end),'b',t(trim:end),3*std_tht(trim:end),'r-',t(trim:end),-3*std_tht(trim:end),'r-');
 grid on
 title('Theta Error +- 3*Sigma');
 
@@ -380,28 +309,20 @@ title('True Omega (b) vs Estimated Omega (r)');
 figure
 subplot(2,1,1)
 trim = 10;
-plot(t(trim:end),err_v(trim:end),'b',t(trim:end),err_v(trim:end)+3*std_v(trim:end),'r-',t(trim:end),err_v(trim:end)-3*std_v(trim:end),'r-');
+plot(t(trim:end),err_v(trim:end),'b',t(trim:end),3*std_v(trim:end),'r-',t(trim:end),-3*std_v(trim:end),'r-');
 title('Velocity Error +- 3*sigma');
 subplot(2,1,2)
-plot(t(trim:end),err_w(trim:end),'b',t(trim:end),err_w(trim:end)+3*std_w(trim:end),'r-',t(trim:end),err_w(trim:end)-3*std_w(trim:end),'r-');
+plot(t(trim:end),err_w(trim:end),'b',t(trim:end),3*std_w(trim:end),'r-',t(trim:end),-3*std_w(trim:end),'r-');
 title('Omega Error +- 3*sigma');
 
 
 figure
 subplot(2,1,1)
-plot(t,hist_state(:,6),'b',t,hist_est(:,6),'r')
-title('True Right Wheel Offset (b) vs Estimated Right Wheel Offset (r)');
-subplot(2,1,2)
-plot(t,hist_state(:,7),'b',t,hist_est(:,7),'r')
-title('True Left Wheel Offset (b) vs Estimated Left Wheel Offset (r)');
-
-figure
-subplot(2,1,1)
 trim = 10;
-plot(t(trim:end),err_vRoff(trim:end),'b',t(trim:end),err_vRoff(trim:end)+3*std_vRoff(trim:end),'r-',t(trim:end),err_vRoff(trim:end)-3*std_vRoff(trim:end),'r-');
+plot(t(trim:end),err_vRoff(trim:end),'b',t(trim:end),3*std_vRoff(trim:end),'r-',t(trim:end),-3*std_vRoff(trim:end),'r-');
 title('Right Wheel Offset Error +- 3*sigma');
 subplot(2,1,2)
-plot(t(trim:end),err_vLoff(trim:end),'b',t(trim:end),err_vLoff(trim:end)+3*std_vLoff(trim:end),'r-',t(trim:end),err_vLoff(trim:end)-3*std_vLoff(trim:end),'r-');
+plot(t(trim:end),err_vLoff(trim:end),'b',t(trim:end),3*std_vLoff(trim:end),'r-',t(trim:end),-3*std_vLoff(trim:end),'r-');
 title('Left Wheel Offset Error +- 3*sigma');
 
 

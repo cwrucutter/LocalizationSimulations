@@ -227,66 +227,66 @@ rmserr_vLoff = sqrt(mean(err_vLoff.^2))
 %% Plots
 close all
 figure
-plot(hist_state(:,1),hist_state(:,2),'b','LineWidth',3)
+plot(hist_state(:,1),hist_state(:,2),'.b','LineWidth',3)
 hold on
-plot(hist_est(:,1),hist_est(:,2),'r-x') %,hist_est2(:,1),hist_est2(:,2),'g-x')
+plot(hist_est(:,1),hist_est(:,2),'r.') %,hist_est2(:,1),hist_est2(:,2),'g-x')
 title('True track (b) vs Esimated track (r)');
 
 figure
 subplot(3,1,1)
 t = 0:dt:T;
 trim = 30;
-plot(t(trim:end),err_x(trim:end),'b',t(trim:end),err_x(trim:end)+3*std_x(trim:end),'r-',t(trim:end),err_x(trim:end)-3*std_x(trim:end),'r-');
+plot(t(trim:end),err_x(trim:end),'b.',t(trim:end),err_x(trim:end)+3*std_x(trim:end),'r--',t(trim:end),err_x(trim:end)-3*std_x(trim:end),'r--');
 grid on
 title('X Error +- 3*Sigma');
 
 subplot(3,1,2)
-plot(t(trim:end),err_y(trim:end),'b',t(trim:end),err_y(trim:end)+3*std_y(trim:end),'r-',t(trim:end),err_y(trim:end)-3*std_y(trim:end),'r-');
+plot(t(trim:end),err_y(trim:end),'b.',t(trim:end),err_y(trim:end)+3*std_y(trim:end),'r--',t(trim:end),err_y(trim:end)-3*std_y(trim:end),'r--');
 grid on
 title('Y Error +- 3*Sigma');
 
 subplot(3,1,3)
-plot(t(trim:end),err_tht(trim:end),'b',t(trim:end),err_tht(trim:end)+3*std_tht(trim:end),'r-',t(trim:end),err_tht(trim:end)-3*std_tht(trim:end),'r-');
+plot(t(trim:end),err_tht(trim:end),'b.',t(trim:end),err_tht(trim:end)+3*std_tht(trim:end),'r--',t(trim:end),err_tht(trim:end)-3*std_tht(trim:end),'r--');
 grid on
 title('Theta Error +- 3*Sigma');
 
 figure
-plot(t,hist_state(:,3),'b',t,hist_est(:,3),'r')
+plot(t,hist_state(:,3),'b.',t,hist_est(:,3),'r.')
 title('True heading (b) vs Estimated heading (r)');
 
 figure
 subplot(2,1,1)
-plot(t,hist_state(:,4),'b',t,hist_est(:,4),'r')
+plot(t,hist_state(:,4),'b.',t,hist_est(:,4),'r.')
 title('True Velocity (b) vs Estimated Velocity (r)');
 subplot(2,1,2)
-plot(t,hist_state(:,5),'b',t,hist_est(:,5),'r')
+plot(t,hist_state(:,5),'b.',t,hist_est(:,5),'r.')
 title('True Omega (b) vs Estimated Omega (r)');
 
 figure
 subplot(2,1,1)
 trim = 10;
-plot(t(trim:end),err_v(trim:end),'b',t(trim:end),err_v(trim:end)+3*std_v(trim:end),'r-',t(trim:end),err_v(trim:end)-3*std_v(trim:end),'r-');
+plot(t(trim:end),err_v(trim:end),'b.',t(trim:end),err_v(trim:end)+3*std_v(trim:end),'r--',t(trim:end),err_v(trim:end)-3*std_v(trim:end),'r--');
 title('Velocity Error +- 3*sigma');
 subplot(2,1,2)
-plot(t(trim:end),err_w(trim:end),'b',t(trim:end),err_w(trim:end)+3*std_w(trim:end),'r-',t(trim:end),err_w(trim:end)-3*std_w(trim:end),'r-');
+plot(t(trim:end),err_w(trim:end),'b.',t(trim:end),err_w(trim:end)+3*std_w(trim:end),'r--',t(trim:end),err_w(trim:end)-3*std_w(trim:end),'r--');
 title('Velocity Error +- 3*sigma');
 
 
 figure
 subplot(2,1,1)
-plot(t,hist_state(:,6),'b',t,hist_est(:,6),'r')
+plot(t,hist_state(:,6),'b',t,hist_est(:,6),'r.')
 title('True Right Wheel Offset (b) vs Estimated Right Wheel Offset (r)');
 subplot(2,1,2)
-plot(t,hist_state(:,7),'b',t,hist_est(:,7),'r')
+plot(t,hist_state(:,7),'b',t,hist_est(:,7),'r.')
 title('True Left Wheel Offset (b) vs Estimated Left Wheel Offset (r)');
 
 figure
 subplot(2,1,1)
 trim = 10;
-plot(t(trim:end),err_vRoff(trim:end),'b',t(trim:end),err_vRoff(trim:end)+3*std_vRoff(trim:end),'r-',t(trim:end),err_vRoff(trim:end)-3*std_vRoff(trim:end),'r-');
+plot(t(trim:end),err_vRoff(trim:end),'b.',t(trim:end),err_vRoff(trim:end)+3*std_vRoff(trim:end),'r--',t(trim:end),err_vRoff(trim:end)-3*std_vRoff(trim:end),'r--');
 title('Right Wheel Offset Error +- 3*sigma');
 subplot(2,1,2)
-plot(t(trim:end),err_vLoff(trim:end),'b',t(trim:end),err_vLoff(trim:end)+3*std_vLoff(trim:end),'r-',t(trim:end),err_vLoff(trim:end)-3*std_vLoff(trim:end),'r-');
+plot(t(trim:end),err_vLoff(trim:end),'b.',t(trim:end),err_vLoff(trim:end)+3*std_vLoff(trim:end),'r--',t(trim:end),err_vLoff(trim:end)-3*std_vLoff(trim:end),'r--');
 title('Left Wheel Offset Error +- 3*sigma');
 
 
