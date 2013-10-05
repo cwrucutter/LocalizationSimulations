@@ -36,17 +36,17 @@ f_sys_G = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
                 x(3)+x(5)*dt;
                 x(4); %velocity
                 x(5); %angular vel
-                x(6); %tpmR
-                x(7); %tpmL
-                x(8)]; %wheelbase
+                x(6); %scaleR
+                x(7); %scaleL
+                x(8)]; %scaleB
 f_sys_H = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
                 x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
                 x(3)+x(5)*dt;
                 x(4); %velocity
                 x(5); %angular vel
-                x(6); %tpmR
-                x(7); %tpmL
-                x(8)]; %wheelbase
+                x(6); %scaleR
+                x(7); %scaleL
+                x(8)]; %scaleB
 f_sys_9 = @(x) [x(1)+x(4)*dt*cos(x(3)+x(5)*dt/2);
                 x(2)+x(4)*dt*sin(x(3)+x(5)*dt/2);
                 x(3)+x(5)*dt;
@@ -147,7 +147,7 @@ sigma_tpmL = 0.01;
 sigma_b = 0.0001;
 sigma_tpmR_scale = 0.1;
 sigma_tpmL_scale = 0.1;
-sigma_b_scale = 01.1;
+sigma_b_scale = 1;
 Q_E = [sigma_x^2 0 0 0 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0 0 0 0;
        0 0 0 sigma_v^2 0 0 0 0 0 0; 0 0 0 0 sigma_w^2 0 0 0 0 0; 0 0 0 0 0 sigma_vRerr^2 0 0 0 0; 0 0 0 0 0 0 sigma_vLerr^2 0 0 0;
        0 0 0 0 0 0 0 sigma_tpmR^2 0 0; 0 0 0 0 0 0 0 0 sigma_tpmL^2 0; 0 0 0 0 0 0 0 0 0 sigma_b^2];
@@ -195,6 +195,9 @@ H_enc_F = @(x, dt) dt * ...
 H_enc_G = @(x, dt) ...
     [0 0 0 x(6)  x(6)*b*x(8)/2 (x(4)+b*x(8)*x(5)/2) 0  x(6)*b*x(5)/2 ;
      0 0 0 x(7) -x(7)*b*x(8)/2 0 (x(4)-b*x(8)*x(5)/2) -x(7)*b*x(5)/2];
+% H_enc_H = @(x, dt) ...
+%     [0 0 0 (x(6)+x(7))/2   b*(x(6)-x(7))/4   x(4)/2+b*x(5)/4   x(4)/2-b*x(5)/4  0 ;
+%      0 0 0 (x(6)-x(7))/b     (x(6)-x(7))/2   x(4)/b+x(5)/2    -x(4)/b+x(5)/2      0 ];
 H_enc_H = @(x, dt) ...
     [0 0 0 (x(6)+x(7))/2   b*x(8)*(x(6)-x(7))/4   x(4)/2+b*x(8)*x(5)/4   x(4)/2-b*x(8)*x(5)/4  b*x(5)*(x(6)-x(7))/4 ;
      0 0 0 (x(6)-x(7))/b     x(8)*(x(6)-x(7))/2   x(4)/b+x(8)*x(5)/2    -x(4)/b+x(8)*x(5)/2      x(5)*(x(6)+x(7))/2 ];
@@ -337,8 +340,12 @@ end
 if settings.system == 6
     P_est(6,6) = 0.1;
     P_est(7,7) = 0.1;
-    P_est(8,8) = 0.1;
+    P_est(8,8) = 0.01;
 end
-
+if settings.system == 7
+    P_est(6,6) = 0.1;
+    P_est(7,7) = 0.1;
+    P_est(8,8) = 1;
+end
 
 Qk = Q*dt;

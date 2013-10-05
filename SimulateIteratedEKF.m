@@ -20,7 +20,7 @@ tpmL = 25000;
 %        5 = 5-state with wheel odometry
 %        6 = 5-state with wheel odometry, encoders expressed as velocity
 %        7 = 5-state with wheel odometry, parameterized encoders as v,w
-settings.system = 7;
+settings.system = 6;
 
 %% Initializations
 
@@ -42,14 +42,17 @@ hist_cov(1,:,:) = P_est;
 % GENERATE TRACK
 track = zeros(len,2);
 
-track = [30 1 0;
+track = [10 1 0;
+         20 0.5 -0.3;
          10 1 .1;
-         20 1 0;
+         10 1 -0.1;
+         10 .7 -0.2;
          10 0.5 -0.5;
          10 1 0;
          5 0 0.2
          10 1 0.1;
-         20 0.5 0.3];
+         20 0.5 0.3
+         30 0.3 0.4];
 tracksum = cumsum(track(:,1));
 track = [track;
          T-tracksum(end) 0.2 0];
@@ -70,8 +73,8 @@ for i = 1:len
     end
     [V, vaccel] = AccelLimit(track(trackindex,2),V,vdot,dt);
     [w, waccel] = AccelLimit(track(trackindex,3),w,wdot,dt);
-    Vr = V + b*1*w/2; %Calculate Vr
-    Vl = V - b*1*w/2; %Calculate Vl
+    Vr = V + b*w/2; %Calculate Vr
+    Vl = V - b*w/2; %Calculate Vl
     
     % ACTUATOR NOISE
     % Simulate the imperfect actuator by adding noise to Vl and Vr
@@ -94,7 +97,7 @@ for i = 1:len
     elseif settings.system == 5
         x_true = [x_true; V; w; tpmR; tpmL; b];
     elseif settings.system == 6
-        x_true = [x_true; V; w; 1; 1; 1];
+        x_true = [x_true; V; w; 0.8; 1.1; 1.3];
     elseif settings.system == 7
         x_true = [x_true; V; w; 1; 1; 1];
     else
@@ -104,8 +107,8 @@ for i = 1:len
     
     % PREDICTION: (every time step)
     % Estimate equations:
-    Dr = Vr_true*dt + vRoff*dt; % + sigma_enc*randn   % Measure encoder displacement
-    Dl = Vl_true*dt + vLoff*dt; % + sigma_enc*randn
+    Dr = Vr_true*dt + vRoff*dt + sigma_enc*randn;   % Measure encoder displacement
+    Dl = Vl_true*dt + vLoff*dt + sigma_enc*randn;
     x_est_pre = f_sys(x_est);
     
     Ak = Asys(x_est,dt);
@@ -116,7 +119,11 @@ for i = 1:len
 %     Rk = Rk_enc*[Vr_true 0 0;0 Vl_true 0; 0 0 1];
 %     Z  = [Dr/dt; Dl/dt; w+sigma_gyro/10*randn];
     Rk = Rk_enc*[Vr_true 0;0 Vl_true];
-    Z  = [Dr/dt*1.1; Dl/dt*0.9];
+    vRenc = Dr/dt*1;
+    vLenc = Dl/dt*1;
+    Z = h_enc(x_true,dt);
+%     Z  = [(vRenc+vLenc)/2;  (vRenc-vLenc)/(b*0.8)];
+%     Z  = [Dr/dt*1;  Dl/dt*1];
 %     Z  = [Dr*tpmR; Dl*tpmL];
 %     Zest  = H*x_est_pre;
     Zest = h_enc(x_est_pre,dt);
@@ -192,6 +199,7 @@ end
 
 %% Evaluation
 
+t = 0:dt:T;
 err_norm = zeros(len+1,1);
 err_all = hist_est - hist_state;
 for j=1:len
@@ -230,31 +238,31 @@ rmserr_w   = sqrt(mean(err_w.^2))
 rmserr_vRoff = sqrt(mean(err_vRoff.^2))
 rmserr_vLoff = sqrt(mean(err_vLoff.^2))
 
-%% Truth Plots
-close all
-figure
-plot(hist_state(:,1),hist_state(:,2),'b','LineWidth',3)
-title('True track (b)');
-xlabel('x (m)');
-ylabel('y (m)');
-
-figure
-t = 0:dt:T;
-subplot(2,1,1)
-plot(t,hist_state(:,4),'b')
-title('True Velocity (b)');
-xlabel('Time (s)');
-ylabel('Forward Velocity (m/s)');
-ylim([-1,2])
-subplot(2,1,2)
-plot(t,hist_state(:,5),'b')
-ylim([-1,1])
-title('True Angular Velocity (b)');
-xlabel('Time (s)');
-ylabel('Angular Velocity (rad/s)');
+% % %% Truth Plots
+% % % close all
+% % figure
+% % plot(hist_state(:,1),hist_state(:,2),'b','LineWidth',3)
+% % title('True track (b)');
+% % xlabel('x (m)');
+% % ylabel('y (m)');
+% % 
+% % figure
+% % t = 0:dt:T;
+% % subplot(2,1,1)
+% % plot(t,hist_state(:,4),'b')
+% % title('True Velocity (b)');
+% % xlabel('Time (s)');
+% % ylabel('Forward Velocity (m/s)');
+% % ylim([-1,2])
+% % subplot(2,1,2)
+% % plot(t,hist_state(:,5),'b')
+% % ylim([-1,1])
+% % title('True Angular Velocity (b)');
+% % xlabel('Time (s)');
+% % ylabel('Angular Velocity (rad/s)');
 
 %% Plots
-close all
+% close all
 
 names = { 'X Position';
           'Y Position';
@@ -290,35 +298,36 @@ for ii = 1:length(x_true)
 end
 
 %%
-figure
+plotStart = 50;
+idx = 0;
+
+figure(plotStart+idx); idx=idx+1;
 plot(hist_state(:,1),hist_state(:,2),'b','LineWidth',3)
 hold on
 plot(hist_est(:,1),hist_est(:,2),'r-x') %,hist_est2(:,1),hist_est2(:,2),'g-x')
 title('True track (b) vs Esimated track (r)');
 
-figure
+figure(plotStart+idx); idx=idx+1;
 subplot(3,1,1)
 t = 0:dt:T;
 trim = 30;
 plot(t(trim:end),err_x(trim:end),'b',t(trim:end),3*std_x(trim:end),'r-',t(trim:end),-3*std_x(trim:end),'r-');
 grid on
 title('X Error +- 3*Sigma');
-
 subplot(3,1,2)
 plot(t(trim:end),err_y(trim:end),'b',t(trim:end),3*std_y(trim:end),'r-',t(trim:end),-3*std_y(trim:end),'r-');
 grid on
 title('Y Error +- 3*Sigma');
-
 subplot(3,1,3)
 plot(t(trim:end),err_tht(trim:end),'b',t(trim:end),3*std_tht(trim:end),'r-',t(trim:end),-3*std_tht(trim:end),'r-');
 grid on
 title('Theta Error +- 3*Sigma');
 
-figure
+figure(plotStart+idx); idx=idx+1;
 plot(t,hist_state(:,3),'b',t,hist_est(:,3),'r')
 title('True heading (b) vs Estimated heading (r)');
 
-figure
+figure(plotStart+idx); idx=idx+1;
 subplot(2,1,1)
 plot(t,hist_state(:,4),'b',t,hist_est(:,4),'r')
 title('True Velocity (b) vs Estimated Velocity (r)');
@@ -326,7 +335,7 @@ subplot(2,1,2)
 plot(t,hist_state(:,5),'b',t,hist_est(:,5),'r')
 title('True Omega (b) vs Estimated Omega (r)');
 
-figure
+figure(plotStart+idx); idx=idx+1;
 subplot(2,1,1)
 trim = 10;
 plot(t(trim:end),err_v(trim:end),'b',t(trim:end),3*std_v(trim:end),'r-',t(trim:end),-3*std_v(trim:end),'r-');
@@ -336,7 +345,7 @@ plot(t(trim:end),err_w(trim:end),'b',t(trim:end),3*std_w(trim:end),'r-',t(trim:e
 title('Omega Error +- 3*sigma');
 
 
-figure
+figure(plotStart+idx); idx=idx+1;
 subplot(2,1,1)
 trim = 10;
 plot(t(trim:end),err_vRoff(trim:end),'b',t(trim:end),3*std_vRoff(trim:end),'r-',t(trim:end),-3*std_vRoff(trim:end),'r-');
@@ -351,9 +360,9 @@ title('Left Wheel Offset Error +- 3*sigma');
 % ylim([0 max(hist_iter(:,1)+5)])
 % title('Number of iterations run for GPS measurement');
 
-figure
-plot(t,err_norm)
-title('normalized error in all states')
+% figure
+% plot(t,err_norm)
+% title('normalized error in all states')
 
 % figure
 % subplot(2,1,1)
