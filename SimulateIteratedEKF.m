@@ -18,7 +18,9 @@ tpmL = 25000;
 %        3 = 9-state
 %        4 = 7-state with wheel odometry
 %        5 = 5-state with wheel odometry
-settings.system = 6;
+%        6 = 5-state with wheel odometry, encoders expressed as velocity
+%        7 = 5-state with wheel odometry, parameterized encoders as v,w
+settings.system = 7;
 
 %% Initializations
 
@@ -92,6 +94,8 @@ for i = 1:len
     elseif settings.system == 5
         x_true = [x_true; V; w; tpmR; tpmL; b];
     elseif settings.system == 6
+        x_true = [x_true; V; w; 1; 1; 1];
+    elseif settings.system == 7
         x_true = [x_true; V; w; 1; 1; 1];
     else
         error('Not a valid option for settings.system')
