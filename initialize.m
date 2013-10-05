@@ -147,7 +147,7 @@ sigma_tpmL = 0.01;
 sigma_b = 0.0001;
 sigma_tpmR_scale = 0.1;
 sigma_tpmL_scale = 0.1;
-sigma_b_scale = 1;
+sigma_b_scale = .5;
 Q_E = [sigma_x^2 0 0 0 0 0 0 0 0 0; 0 sigma_y^2 0 0 0 0 0 0 0 0; 0 0 sigma_tht^2 0 0 0 0 0 0 0;
        0 0 0 sigma_v^2 0 0 0 0 0 0; 0 0 0 0 sigma_w^2 0 0 0 0 0; 0 0 0 0 0 sigma_vRerr^2 0 0 0 0; 0 0 0 0 0 0 sigma_vLerr^2 0 0 0;
        0 0 0 0 0 0 0 sigma_tpmR^2 0 0; 0 0 0 0 0 0 0 0 sigma_tpmL^2 0; 0 0 0 0 0 0 0 0 0 sigma_b^2];
@@ -343,8 +343,8 @@ if settings.system == 6
     P_est(8,8) = 0.01;
 end
 if settings.system == 7
-    P_est(6,6) = 0.1;
-    P_est(7,7) = 0.1;
+    P_est(6,6) = 1;
+    P_est(7,7) = 1;
     P_est(8,8) = 1;
 end
 
